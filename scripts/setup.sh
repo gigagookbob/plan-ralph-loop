@@ -20,7 +20,7 @@ MAX_PHASES=10
 BLOCK_TOOLS="true"
 REQUIRED_SECTIONS="Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
 COMPLETION_PROMISE="PLAN_OK"
-PHASES="explore,draft,critique,revise"
+PHASES="understand,explore,alternatives,draft,critique,revise"
 
 # --- Parse arguments ---
 while [[ $# -gt 0 ]]; do
@@ -39,8 +39,10 @@ OPTIONS:
   --max-phases <n>               Maximum phase transitions (default: 10)
   --max-iterations <n>           Alias for --max-phases
   --phases "a,b,c,d"             Custom phase sequence
-                                 (default: explore,draft,critique,revise)
-  --skip-explore                 Skip explore phase (start with draft)
+                                 (default: understand,explore,alternatives,draft,critique,revise)
+  --skip-understand              Skip understand phase
+  --skip-explore                 Skip explore phase
+  --skip-alternatives            Skip alternatives phase
   --no-block-tools               Disable tool blocking (default: blocking ON)
   --required-sections "A,B,C"    Required sections, comma-separated
                                  (default: Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions)
@@ -48,15 +50,17 @@ OPTIONS:
   -h, --help                     Show this help
 
 PHASES:
-  explore   Read codebase, list findings (no plan writing allowed)
-  draft     Write complete plan with all required sections
-  critique  Self-critique: list numbered weaknesses (no rewriting)
-  revise    Rewrite plan addressing critique items, can finalize
-  iterate   Further critique+revision cycles if needed
+  understand   Analyze the problem before reading code
+  explore      Read codebase, list findings (no plan writing allowed)
+  alternatives Compare 2-3 approaches, choose one with justification
+  draft        Write complete plan with all required sections
+  critique     Self-critique: list numbered weaknesses (no rewriting)
+  revise       Rewrite plan addressing critique items, can finalize
+  iterate      Further critique+revision cycles if needed
 
 EXAMPLES:
-  /plansmith:plan Design the authentication system --max-phases 10
-  /plansmith:plan Plan API refactor --skip-explore
+  /plansmith:plan Design the authentication system --max-phases 12
+  /plansmith:plan Plan API refactor --skip-understand --skip-explore
   /plansmith:plan Design caching --phases "draft,critique,revise"
   /plansmith:plan Plan DB migration --no-block-tools
 
@@ -85,8 +89,16 @@ HELP_EOF
       PHASES="$2"
       shift 2
       ;;
+    --skip-understand)
+      PHASES=$(echo "$PHASES" | sed 's/understand,\?//' | sed 's/^,//')
+      shift
+      ;;
     --skip-explore)
-      PHASES="draft,critique,revise"
+      PHASES=$(echo "$PHASES" | sed 's/explore,\?//' | sed 's/^,//')
+      shift
+      ;;
+    --skip-alternatives)
+      PHASES=$(echo "$PHASES" | sed 's/alternatives,\?//' | sed 's/^,//')
       shift
       ;;
     --no-block-tools)
@@ -191,10 +203,12 @@ Each phase has distinct validation — you cannot skip phases.
 ===================================================================
 PHASE SEQUENCE
 ===================================================================
-  explore  → Read codebase, list findings (no plan yet)
-  draft    → Write complete plan with all required sections
-  critique → List numbered weaknesses (no rewriting, no finalizing)
-  revise   → Address all critiques, output <promise>${COMPLETION_PROMISE}</promise>
+  understand    → Analyze the problem before reading code
+  explore       → Read codebase, list findings (no plan yet)
+  alternatives  → Compare 2-3 approaches, choose one
+  draft         → Write complete plan with all required sections
+  critique      → List numbered weaknesses (no rewriting, no finalizing)
+  revise        → Address all critiques, output <promise>${COMPLETION_PROMISE}</promise>
 ===================================================================
 EOF
 

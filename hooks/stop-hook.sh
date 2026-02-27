@@ -164,6 +164,70 @@ get_section_pattern() {
 
 case "$PHASE" in
 
+  understand)
+    # NEGATIVE VALIDATION: must NOT contain plan section headings (but file paths are OK)
+    if echo "$LAST_OUTPUT" | grep -qiE "^#+ +(Goal|목표|Steps|단계|Scope|범위|Non-Scope|비범위|Verification|검증|Risks|리스크|Open Questions|오픈 질문)"; then
+      block_with \
+        "[plansmith] $PROGRESS Phase: UNDERSTAND — Do NOT write a plan yet.
+
+In this phase, deeply understand the request BEFORE reading code:
+
+1. PROBLEM: What is the problem? Why is this change needed?
+2. SUCCESS CRITERIA: What does success look like concretely?
+3. CONSTRAINTS: What technical/business constraints exist?
+4. ASSUMPTIONS: What assumptions are you making?
+5. IMPACT: Who/what is affected?
+
+Do NOT include headings like ## Goal, ## Steps, ## Scope, etc.
+
+Original request:
+$PROMPT_TEXT" \
+        "Phase: UNDERSTAND | Analyze the problem. Do NOT write a plan yet."
+    fi
+
+    # POSITIVE VALIDATION: structured problem understanding
+    NUMBERED_COUNT=$(echo "$LAST_OUTPUT" | grep -cE '^\s*[0-9]+\.' || true)
+    UNDERSTAND_KEYWORDS=$(echo "$LAST_OUTPUT" | grep -ciE '(문제|problem|왜|why|목적|purpose|성공|success|제약|constraint|가정|assumption|영향|impact|요구사항|requirement)' || true)
+
+    if [[ "$NUMBERED_COUNT" -lt 3 ]] || [[ "$UNDERSTAND_KEYWORDS" -lt 2 ]]; then
+      block_with \
+        "[plansmith] $PROGRESS Phase: UNDERSTAND — Not enough problem analysis.
+
+Found $NUMBERED_COUNT numbered items (need 3+) and $UNDERSTAND_KEYWORDS understanding keywords (need 2+).
+
+Deeply analyze the request:
+1. PROBLEM: What is the problem? Why is this change needed?
+2. SUCCESS CRITERIA: What does success look like concretely?
+3. CONSTRAINTS: What technical/business constraints exist?
+4. ASSUMPTIONS: What assumptions are you making?
+5. IMPACT: Who/what is affected?
+
+Original request:
+$PROMPT_TEXT" \
+        "Phase: UNDERSTAND | Need 3+ numbered items and 2+ understanding keywords."
+    fi
+
+    # Understand passed — advance to explore
+    advance_phase
+    block_with \
+      "[plansmith] $PROGRESS Phase: EXPLORE — Now read the codebase.
+
+Based on your problem understanding above, read the codebase to find relevant files and patterns.
+Reference your problem definition, success criteria, and constraints as you explore.
+
+1. FILES READ: List every file you examined (full paths)
+2. ARCHITECTURE: How the codebase is structured
+3. RELEVANT PATTERNS: Existing patterns that affect the planned work
+4. DEPENDENCIES: External and internal dependencies
+5. CONSTRAINTS: Technical constraints discovered
+
+Do NOT include headings like ## Goal, ## Steps, ## Scope, etc.
+
+Original request:
+$PROMPT_TEXT" \
+      "Phase: EXPLORE | Read actual files and report findings. No plan yet."
+    ;;
+
   explore)
     # NEGATIVE VALIDATION: must NOT contain plan section headings
     if echo "$LAST_OUTPUT" | grep -qiE "^#+ +(Goal|목표|Steps|단계|Scope|범위|Non-Scope|비범위|Verification|검증|Risks|리스크|Open Questions|오픈 질문)"; then
@@ -208,15 +272,78 @@ $PROMPT_TEXT" \
         "Phase 1: EXPLORE | Read actual files and report findings. No plan yet."
     fi
 
-    # Explore passed — advance to draft
+    # Explore passed — advance to alternatives
     advance_phase
     block_with \
-      "[plansmith] $PROGRESS Phase 2: DRAFT — Now write the plan.
+      "[plansmith] $PROGRESS Phase: ALTERNATIVES — Compare approaches before planning.
 
-Based on your exploration findings, write a complete plan with ALL required sections:
+Based on your exploration findings, compare 2-3 possible approaches:
+For each approach:
+- Core idea
+- Pros and cons (implementation complexity, maintainability, compatibility with existing code)
+
+At the end, choose one approach and explain why.
+Do NOT write a plan yet — only compare approaches.
+
+Original request:
+$PROMPT_TEXT" \
+      "Phase: ALTERNATIVES | Compare 2-3 approaches. Do NOT write a plan yet."
+    ;;
+
+  alternatives)
+    # NEGATIVE VALIDATION: must NOT contain promise tag or plan headings
+    if echo "$LAST_OUTPUT" | grep -qE '<promise>'; then
+      block_with \
+        "[plansmith] $PROGRESS Phase: ALTERNATIVES — Do NOT finalize during alternatives comparison.
+
+Compare 2-3 approaches with pros/cons, then choose one. No plan writing, no promise tags.
+
+Original request:
+$PROMPT_TEXT" \
+        "Phase: ALTERNATIVES | Remove the promise tag. Compare approaches only."
+    fi
+    if echo "$LAST_OUTPUT" | grep -qiE "^#+ +(Goal|목표|Steps|단계|Scope|범위|Non-Scope|비범위|Verification|검증|Risks|리스크|Open Questions|오픈 질문)"; then
+      block_with \
+        "[plansmith] $PROGRESS Phase: ALTERNATIVES — Do NOT write a plan yet.
+
+Compare 2-3 approaches with pros/cons, then choose one. No plan headings allowed.
+
+Original request:
+$PROMPT_TEXT" \
+        "Phase: ALTERNATIVES | Compare approaches only. No plan headings."
+    fi
+
+    # POSITIVE VALIDATION: alternatives comparison with recommendation
+    ALT_NUMBERED=$(echo "$LAST_OUTPUT" | grep -cE '^\s*[0-9]+\.' || true)
+    ALT_RECOMMEND=$(echo "$LAST_OUTPUT" | grep -ciE '(추천|선택|recommend|choose|prefer|선정|selected|chose)' || true)
+    ALT_TRADEOFF=$(echo "$LAST_OUTPUT" | grep -ciE '(장점|단점|pros|cons|advantage|disadvantage|trade-off|트레이드|tradeoff)' || true)
+
+    if [[ "$ALT_NUMBERED" -lt 2 ]] || [[ "$ALT_RECOMMEND" -lt 1 ]] || [[ "$ALT_TRADEOFF" -lt 1 ]]; then
+      block_with \
+        "[plansmith] $PROGRESS Phase: ALTERNATIVES — Incomplete alternatives comparison.
+
+Found $ALT_NUMBERED numbered items (need 2+), $ALT_RECOMMEND recommendation keywords (need 1+), $ALT_TRADEOFF trade-off keywords (need 1+).
+
+Compare 2-3 approaches. For each:
+- Core idea
+- Pros and cons (implementation complexity, maintainability, compatibility)
+
+Then choose one approach and explain why.
+
+Original request:
+$PROMPT_TEXT" \
+        "Phase: ALTERNATIVES | Need 2+ options, recommendation, and pros/cons analysis."
+    fi
+
+    # Alternatives passed — advance to draft
+    advance_phase
+    block_with \
+      "[plansmith] $PROGRESS Phase: DRAFT — Now write the plan.
+
+Based on the approach you selected, write a complete plan with ALL required sections:
 $REQUIRED_SECTIONS
 
-Each step must reference specific files and functions you discovered in Phase 1.
+Each step must reference specific files and functions you discovered during exploration.
 Use English or Korean section headings (both accepted).
 
 When the draft is complete, the next phase will ask you to self-critique it.
@@ -224,7 +351,7 @@ Do NOT output <promise>$COMPLETION_PROMISE</promise> yet — there will be a cri
 
 Original request:
 $PROMPT_TEXT" \
-      "Phase 2: DRAFT | Write the complete plan with all required sections."
+      "Phase: DRAFT | Write the complete plan with all required sections."
     ;;
 
   draft)
@@ -281,26 +408,44 @@ $PROMPT_TEXT" \
     ;;
 
   critique)
+    # --- Perspective rotation for repeated critique phases ---
+    # CRITIQUE_NUM counts how many times "critique" appears in phases[0..PHASE_INDEX].
+    # PHASE_INDEX is the value BEFORE advance_phase() is called (advance happens after validation).
+    # Example: phases="...,draft(3),critique(4),revise(5),critique(6),..."
+    #   At PHASE_INDEX=4: head -n 5 -> counts 1 critique (first round)
+    #   At PHASE_INDEX=6: head -n 7 -> counts 2 critiques (second round)
+    CRITIQUE_NUM=$(echo "$PHASES_STR" | tr ',' '\n' | head -n $((PHASE_INDEX + 1)) | grep -c '^critique$' || echo 0)
+
+    case "$CRITIQUE_NUM" in
+      1) CRITIQUE_PERSPECTIVE="Critique from a TECHNICAL perspective: implementation correctness, edge cases, dependency ordering, error handling, performance implications." ;;
+      2) CRITIQUE_PERSPECTIVE="Critique from a USER/MAINTAINABILITY perspective: Would a new developer understand this? Is documentation sufficient? What is the long-term maintenance cost?" ;;
+      *) CRITIQUE_PERSPECTIVE="Critique as DEVIL'S ADVOCATE: What scenarios would make this plan fail? What are the most optimistic assumptions? What hidden complexity exists?" ;;
+    esac
+
     # NEGATIVE VALIDATION: must NOT contain promise tag
     if echo "$LAST_OUTPUT" | grep -qE '<promise>'; then
       block_with \
-        "[plansmith] $PROGRESS Phase 3: CRITIQUE — Do NOT finalize during critique.
+        "[plansmith] $PROGRESS Phase: CRITIQUE — Do NOT finalize during critique.
 
 You included a <promise> tag. This phase is for identifying weaknesses ONLY.
+$CRITIQUE_PERSPECTIVE
+
 List at least 3 specific, numbered weaknesses in the plan. No rewriting, no finalizing.
 
 Original request:
 $PROMPT_TEXT" \
-        "Phase 3: CRITIQUE | Remove the promise tag. List weaknesses only."
+        "Phase: CRITIQUE | Remove the promise tag. List weaknesses only."
     fi
 
     # POSITIVE VALIDATION: must contain at least 3 numbered items
     NUMBERED_COUNT=$(echo "$LAST_OUTPUT" | grep -cE '^\s*[0-9]+\.' || true)
     if [[ "$NUMBERED_COUNT" -lt 3 ]]; then
       block_with \
-        "[plansmith] $PROGRESS Phase 3: CRITIQUE — Not enough specific critiques.
+        "[plansmith] $PROGRESS Phase: CRITIQUE — Not enough specific critiques.
 
 Found $NUMBERED_COUNT numbered items, need at least 3.
+$CRITIQUE_PERSPECTIVE
+
 List specific, numbered weaknesses (e.g., '1. The step ordering is wrong because...')
 
 Consider: step ordering, edge cases, verification runnability, implicit assumptions,
@@ -308,13 +453,13 @@ vague language, breaking changes, effort estimates.
 
 Original request:
 $PROMPT_TEXT" \
-        "Phase 3: CRITIQUE | Need at least 3 numbered weaknesses. Found $NUMBERED_COUNT."
+        "Phase: CRITIQUE | Need at least 3 numbered weaknesses. Found $NUMBERED_COUNT."
     fi
 
     # Critique passed — advance to revise
     advance_phase
     block_with \
-      "[plansmith] $PROGRESS Phase 4: REVISE — Rewrite the plan addressing every critique item.
+      "[plansmith] $PROGRESS Phase: REVISE — Rewrite the plan addressing every critique item.
 
 Address EVERY numbered weakness from your critique. Rewrite the complete plan with all fixes applied.
 
@@ -326,7 +471,7 @@ IMPORTANT: You are in READ-ONLY planning mode. Do NOT edit, write, or create fil
 
 Original request:
 $PROMPT_TEXT" \
-      "Phase 4: REVISE | Address all critique items. Output <promise>$COMPLETION_PROMISE</promise> when done."
+      "Phase: REVISE | Address all critique items. Output <promise>$COMPLETION_PROMISE</promise> when done."
     ;;
 
   revise|iterate)

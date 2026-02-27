@@ -1,6 +1,6 @@
 ---
 description: "Start a planning-focused iterative loop (Plansmith)"
-argument-hint: "PROMPT [--max-phases N] [--skip-explore] [--no-block-tools]"
+argument-hint: "PROMPT [--max-phases N] [--skip-understand] [--skip-explore] [--skip-alternatives] [--no-block-tools]"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh:*)"]
 hide-from-slash-command-tool: "true"
 ---
@@ -23,10 +23,12 @@ You are now in **planning mode** with a phase-based workflow. File modifications
 
 ## Phase Sequence
 
-1. **EXPLORE**: Read the codebase. List files, architecture, patterns. Do NOT write a plan.
-2. **DRAFT**: Write a complete plan with all required sections.
-3. **CRITIQUE**: List specific numbered weaknesses. Do NOT rewrite or finalize.
-4. **REVISE**: Address all critiques. Output `<promise>PLAN_OK</promise>` when done.
+1. **UNDERSTAND**: Analyze the problem. Define success criteria, constraints, assumptions. Do NOT read code yet.
+2. **EXPLORE**: Read the codebase. List files, architecture, patterns. Do NOT write a plan.
+3. **ALTERNATIVES**: Compare 2-3 approaches with pros/cons. Choose one. Do NOT write a plan.
+4. **DRAFT**: Write a complete plan with all required sections.
+5. **CRITIQUE**: List specific numbered weaknesses. Do NOT rewrite or finalize.
+6. **REVISE**: Address all critiques. Output `<promise>PLAN_OK</promise>` when done.
 
 Each phase has validation — you cannot skip ahead.
 
