@@ -1,7 +1,7 @@
 {
   "name": "plansmith",
   "version": "3.0.0",
-  "description": "Structured planning phases (explore, draft, critique, revise) with per-phase validation and tool blocking for Claude Code.",
+  "description": "Research-backed structured planning for Claude Code — multi-iteration critique-revise (Self-Refine), principle-based evaluation (Constitutional AI), session memory (Reflexion), and Least-to-Most step decomposition.",
   "author": {
     "name": "gigagookbob"
   },
