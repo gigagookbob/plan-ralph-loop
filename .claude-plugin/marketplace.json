@@ -1,0 +1,22 @@
+{
+  "name": "plansmith-local",
+  "owner": {
+    "name": "gigagookbob"
+  },
+  "metadata": {
+    "description": "Plansmith plugin for structured planning phases in Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "plansmith",
+      "source": "./",
+      "description": "Structured planning phases (explore, draft, critique, revise) with per-phase validation and tool blocking for Claude Code.",
+      "version": "2.0.0",
+      "author": {
+        "name": "gigagookbob"
+      },
+      "license": "MIT",
+      "keywords": ["planning", "workflow"]
+    }
+  ]
+}
