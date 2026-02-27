@@ -1,0 +1,25 @@
+{
+  "description": "Plan Ralph Loop: Stop hook for iteration control + PreToolUse hook for tool blocking during planning",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pretooluse-hook.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

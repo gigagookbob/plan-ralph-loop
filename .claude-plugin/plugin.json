@@ -1,0 +1,8 @@
+{
+  "name": "plan-ralph-loop",
+  "version": "1.0.0",
+  "description": "Planning-focused iterative loop with quality gates and tool blocking. Forces Claude into read-only planning mode with structured self-critique until the plan meets a rubric.",
+  "author": {
+    "name": "gigagookbob"
+  }
+}

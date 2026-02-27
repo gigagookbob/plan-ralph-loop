@@ -1,0 +1,6 @@
+# Runtime state files (created during planning loops)
+.claude/plan-ralph.local.md
+.claude/plan-output.local.md
+
+# Temp files from atomic updates
+*.tmp.*
