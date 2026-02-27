@@ -1,6 +1,4 @@
-[English](README.md) | **한국어**
-
-> 한국어 버전을 보고 있습니다. [Click here for the English version.](README.md)
+[English](README.en.md) | **한국어**
 
 # plansmith
 
