@@ -4,6 +4,14 @@ A planning-focused iterative loop plugin for [Claude Code](https://docs.anthropi
 
 Based on the [Ralph Loop](https://ghuntley.com/ralph/) technique — but instead of iterating on code until tests pass, it iterates on **plans** until all required sections are present and the quality gate is satisfied.
 
+## Why?
+
+Working with Claude Code on complex tasks, there's a common pattern: jump straight into writing code, lose direction halfway, revert, start over. "Just plan first" sounds obvious — but AI rarely produces a complete plan on the first attempt.
+
+Humans don't write plans in one shot either. First drafts miss edge cases, get the ordering wrong, overlook dependencies. The difference is that humans naturally self-review. AI needs a structured loop to do the same — draft, critique, revise.
+
+Geoffrey Huntley's [Ralph Loop](https://ghuntley.com/ralph/) solves this for code: iterate until tests pass. plan-ralph-loop applies the same principle to planning. Instead of modifying files until tests pass, it iterates on plans until a quality gate is satisfied — required sections present, self-critique applied, structure verified.
+
 ## How It Differs from Ralph Loop
 
 | | ralph-loop | plan-ralph-loop |
