@@ -32,9 +32,6 @@ Claude Code로 복잡한 작업을 할 때 흔한 패턴이 있습니다: 바로
 ## 빠른 시작
 
 ```bash
-# 플러그인 로드
-claude --plugin-dir /path/to/plansmith
-
 # 계획 루프 시작
 /plansmith:plan 인증 시스템 설계 --max-phases 10
 
@@ -171,23 +168,28 @@ exit_reason: "completed"        # 또는 "max_phases_reached"
 
 ## 설치
 
-```bash
-git clone https://github.com/gigagookbob/plansmith.git
+마켓플레이스를 추가하고 설치합니다:
+
+```shell
+/plugin marketplace add gigagookbob/plansmith
+/plugin install plansmith@plansmith-local
 ```
 
-### 세션별
-
-```bash
-claude --plugin-dir /path/to/plansmith
-```
-
-### 영구 설정 (매 세션 자동 로드)
-
-`~/.claude/settings.json`에 추가:
+팀 프로젝트에 기본 포함하려면 프로젝트의 `.claude/settings.json`에 추가:
 
 ```json
 {
-  "plugins": ["/path/to/plansmith"]
+  "extraKnownMarketplaces": {
+    "plansmith-local": {
+      "source": {
+        "source": "github",
+        "repo": "gigagookbob/plansmith"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "plansmith@plansmith-local": true
+  }
 }
 ```
 

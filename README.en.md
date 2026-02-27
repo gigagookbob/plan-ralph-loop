@@ -32,9 +32,6 @@ Each phase produces genuinely different output because the validation prevents c
 ## Quick Start
 
 ```bash
-# Load the plugin
-claude --plugin-dir /path/to/plansmith
-
 # Start a planning loop
 /plansmith:plan Design the authentication system --max-phases 10
 
@@ -171,23 +168,28 @@ Uses a separate state file (`.claude/plansmith.local.md`) from the official `ral
 
 ## Installation
 
-```bash
-git clone https://github.com/gigagookbob/plansmith.git
+Add the marketplace and install:
+
+```shell
+/plugin marketplace add gigagookbob/plansmith
+/plugin install plansmith@plansmith-local
 ```
 
-### Per-session
-
-```bash
-claude --plugin-dir /path/to/plansmith
-```
-
-### Persistent (load automatically every session)
-
-Add to `~/.claude/settings.json`:
+To enable for a team project, add to your project's `.claude/settings.json`:
 
 ```json
 {
-  "plugins": ["/path/to/plansmith"]
+  "extraKnownMarketplaces": {
+    "plansmith-local": {
+      "source": {
+        "source": "github",
+        "repo": "gigagookbob/plansmith"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "plansmith@plansmith-local": true
+  }
 }
 ```
 
