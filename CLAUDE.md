@@ -11,6 +11,9 @@ plansmith is a Claude Code plugin that progresses through structured planning ph
 - [Constitutional AI](https://arxiv.org/abs/2212.08073) (Anthropic) — principle-based structured critique (12 principles, PASS/FAIL)
 - [Reflexion](https://arxiv.org/abs/2303.11366) (NeurIPS 2023) — persistent session memory across planning runs
 - [Least-to-Most](https://arxiv.org/abs/2205.10625) (ICLR 2023) — progressive step decomposition in draft phase
+- [LLMs Can Plan Only If We Tell Them](https://arxiv.org/abs/2501.13545) (ICLR 2025) — structured prompting activates latent planning
+- [Scaling Test-Time Compute](https://arxiv.org/abs/2408.03314) (ICLR 2025 Oral) — multi-phase inference > larger models
+- [SCoRe](https://arxiv.org/abs/2409.12917) (ICLR 2025 Oral) — structured self-correction via RL
 
 ## Architecture
 
