@@ -2,6 +2,7 @@
 
 # Plan Ralph Loop Setup Script
 # Parses CLI arguments and creates the state file for in-session planning loop.
+# Uses a phase machine: explore → draft → critique → revise
 
 set -euo pipefail
 
@@ -15,17 +16,18 @@ done
 
 # --- Default values ---
 PROMPT_PARTS=()
-MAX_ITERATIONS=20
+MAX_PHASES=10
 BLOCK_TOOLS="true"
 REQUIRED_SECTIONS="Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
 COMPLETION_PROMISE="PLAN_OK"
+PHASES="explore,draft,critique,revise"
 
 # --- Parse arguments ---
 while [[ $# -gt 0 ]]; do
   case $1 in
     -h|--help)
       cat << 'HELP_EOF'
-Plan Ralph Loop - Planning-focused iterative loop
+Plan Ralph Loop - Planning-focused iterative loop with phase machine
 
 USAGE:
   /plan-ralph PROMPT [OPTIONS]
@@ -34,39 +36,58 @@ ARGUMENTS:
   PROMPT    Description of what to plan (can be multiple words)
 
 OPTIONS:
-  --max-iterations <n>           Maximum iterations (default: 20)
+  --max-phases <n>               Maximum phase transitions (default: 10)
+  --max-iterations <n>           Alias for --max-phases
+  --phases "a,b,c,d"             Custom phase sequence
+                                 (default: explore,draft,critique,revise)
+  --skip-explore                 Skip explore phase (start with draft)
   --no-block-tools               Disable tool blocking (default: blocking ON)
   --required-sections "A,B,C"    Required sections, comma-separated
                                  (default: Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions)
   --completion-promise <text>    Completion promise (default: PLAN_OK)
   -h, --help                     Show this help
 
-DESCRIPTION:
-  Forces Claude into read-only planning mode. Each iteration, Claude
-  self-critiques and refines the plan. The loop only ends when all
-  required sections are present and the quality gate is satisfied.
+PHASES:
+  explore   Read codebase, list findings (no plan writing allowed)
+  draft     Write complete plan with all required sections
+  critique  Self-critique: list numbered weaknesses (no rewriting)
+  revise    Rewrite plan addressing critique items, can finalize
+  iterate   Further critique+revision cycles if needed
 
 EXAMPLES:
-  /plan-ralph Design the authentication system --max-iterations 10
-  /plan-ralph Design the caching layer --no-block-tools
-  /plan-ralph Plan DB migration --required-sections "Goal,Steps,Risks"
+  /plan-ralph Design the authentication system --max-phases 10
+  /plan-ralph Plan API refactor --skip-explore
+  /plan-ralph Design caching --phases "draft,critique,revise"
+  /plan-ralph Plan DB migration --no-block-tools
 
 STOPPING:
   /cancel-plan-ralph to cancel the loop.
 HELP_EOF
       exit 0
       ;;
-    --max-iterations)
+    --max-phases|--max-iterations)
       if [[ -z "${2:-}" ]]; then
-        echo "Error: --max-iterations requires a number argument" >&2
+        echo "Error: $1 requires a number argument" >&2
         exit 1
       fi
       if ! [[ "$2" =~ ^[0-9]+$ ]]; then
-        echo "Error: --max-iterations must be a positive integer, got: $2" >&2
+        echo "Error: $1 must be a positive integer, got: $2" >&2
         exit 1
       fi
-      MAX_ITERATIONS="$2"
+      MAX_PHASES="$2"
       shift 2
+      ;;
+    --phases)
+      if [[ -z "${2:-}" ]]; then
+        echo "Error: --phases requires a comma-separated list" >&2
+        exit 1
+      fi
+      PHASES="$2"
+      shift 2
+      ;;
+    --skip-explore)
+      PHASES="draft,critique,revise"
+      shift
       ;;
     --no-block-tools)
       BLOCK_TOOLS="false"
@@ -103,7 +124,7 @@ if [[ -z "$PROMPT" ]]; then
   echo "Error: No planning prompt provided." >&2
   echo "" >&2
   echo "  Usage: /plan-ralph PROMPT [OPTIONS]" >&2
-  echo "  Example: /plan-ralph Design auth system --max-iterations 10" >&2
+  echo "  Example: /plan-ralph Design auth system --max-phases 10" >&2
   echo "" >&2
   echo "  For help: /plan-ralph --help" >&2
   exit 1
@@ -122,6 +143,10 @@ if [[ -f "$STATE_FILE" ]]; then
   fi
 fi
 
+# Determine first phase
+IFS=',' read -ra PHASE_ARR <<< "$PHASES"
+FIRST_PHASE=$(echo "${PHASE_ARR[0]}" | xargs)
+
 # Read rubric template
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 TEMPLATE_FILE="${PLUGIN_ROOT}/templates/plan-rubric.md"
@@ -134,11 +159,13 @@ fi
 cat > "$STATE_FILE" <<EOF
 ---
 active: true
-iteration: 1
-max_iterations: $MAX_ITERATIONS
+phase: $FIRST_PHASE
+phase_index: 0
+max_phases: $MAX_PHASES
 completion_promise: "$COMPLETION_PROMISE"
 block_tools: $BLOCK_TOOLS
 required_sections: "$REQUIRED_SECTIONS"
+phases: "$PHASES"
 started_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ---
 
@@ -152,28 +179,24 @@ cat <<EOF
 Plan Ralph Loop activated!
 
   Prompt: $PROMPT
-  Max iterations: $MAX_ITERATIONS
+  Phases: $PHASES
+  Max phase transitions: $MAX_PHASES
   Tool blocking: $(if [[ "$BLOCK_TOOLS" == "true" ]]; then echo "ON (Edit/Write/Bash blocked)"; else echo "OFF"; fi)
   Required sections: $REQUIRED_SECTIONS
-  State file: $STATE_FILE
+  Starting phase: $FIRST_PHASE
 
-The stop hook is now active. The loop will repeat until the quality gate is satisfied.
+The loop will progress through: $PHASES
+Each phase has distinct validation — you cannot skip phases.
 
 ===================================================================
-COMPLETION REQUIREMENTS
+PHASE SEQUENCE
 ===================================================================
-
-To complete the planning loop:
-  1. All required sections ($REQUIRED_SECTIONS) must be present
-  2. Output <promise>${COMPLETION_PROMISE}</promise> at the end
-
-Rules:
-  - Only output the promise when the plan is thorough and actionable
-  - Self-critique and improve the plan each iteration
-  - READ-ONLY mode: explore the codebase, do not modify files
+  explore  → Read codebase, list findings (no plan yet)
+  draft    → Write complete plan with all required sections
+  critique → List numbered weaknesses (no rewriting, no finalizing)
+  revise   → Address all critiques, output <promise>${COMPLETION_PROMISE}</promise>
 ===================================================================
 EOF
 
-# Echo the prompt for Claude to start working
 echo ""
 echo "$PROMPT"

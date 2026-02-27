@@ -1,13 +1,13 @@
 ---
 description: "Start a planning-focused iterative loop (Plan Ralph Loop)"
-argument-hint: "PROMPT [--max-iterations N] [--no-block-tools] [--required-sections 'A,B,C']"
+argument-hint: "PROMPT [--max-phases N] [--skip-explore] [--no-block-tools]"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-plan-ralph.sh:*)"]
 hide-from-slash-command-tool: "true"
 ---
 
 # Plan Ralph Loop
 
-IMPORTANT: You MUST run the setup script FIRST before doing anything else. This is mandatory — the planning loop will not work without it.
+IMPORTANT: You MUST run the setup script FIRST before doing anything else.
 
 Run this exact command using the Bash tool:
 
@@ -15,20 +15,20 @@ Run this exact command using the Bash tool:
 "${CLAUDE_PLUGIN_ROOT}/scripts/setup-plan-ralph.sh" $ARGUMENTS
 ```
 
-Wait for the script output. It will display "Plan Ralph Loop activated!" and the completion requirements.
-
-ONLY AFTER the setup script has run successfully, begin the planning process below.
+Wait for "Plan Ralph Loop activated!" output.
 
 ---
 
-You are now in **planning mode**. File modifications are blocked. You may only read and explore the codebase.
+You are now in **planning mode** with a phase-based workflow. File modifications are blocked.
 
-## Workflow
+## Phase Sequence
 
-1. Explore the codebase to understand the current architecture
-2. Draft a structured plan following the template below
-3. Each iteration: self-critique the previous plan, then improve it
-4. When all required sections are complete, output `<promise>PLAN_OK</promise>`
+1. **EXPLORE**: Read the codebase. List files, architecture, patterns. Do NOT write a plan.
+2. **DRAFT**: Write a complete plan with all required sections.
+3. **CRITIQUE**: List specific numbered weaknesses. Do NOT rewrite or finalize.
+4. **REVISE**: Address all critiques. Output `<promise>PLAN_OK</promise>` when done.
+
+Each phase has validation — you cannot skip ahead.
 
 ## Required Sections (English or Korean headings accepted)
 
@@ -44,8 +44,7 @@ You are now in **planning mode**. File modifications are blocked. You may only r
 
 ## Rules
 
-- Only output `<promise>PLAN_OK</promise>` when the plan is thorough and actionable
+- Follow the current phase's instructions exactly
+- `<promise>PLAN_OK</promise>` is only valid in the REVISE phase
 - Each step must reference actual file paths, function names, or code patterns
-- No vague language ("improve", "optimize") without specific details
 - Do NOT output a false promise to escape the loop
-- You MUST wrap the completion signal in XML tags: `<promise>PLAN_OK</promise>` — writing just "PLAN_OK" will NOT work

@@ -8,57 +8,57 @@ Please explain the following to the user:
 
 ## What is Plan Ralph Loop?
 
-A planning-focused variant of [Ralph Loop](https://ghuntley.com/ralph/). Instead of iterating on code until tests pass, it iterates on **plans** until a quality gate is satisfied.
+A planning-focused variant of [Ralph Loop](https://ghuntley.com/ralph/). Instead of iterating on code until tests pass, it progresses through **structured phases** to produce a high-quality plan.
 
-**How it works:**
-1. Claude explores the codebase (read-only) and drafts a structured plan
-2. The Stop hook intercepts exit and injects a self-critique prompt
-3. Claude reviews and improves the plan each iteration
-4. When the quality gate passes (required sections + promise tag), the loop ends
-5. The final plan is saved to `.claude/plan-output.local.md`
+**Phase sequence:**
+1. **EXPLORE** — Read the codebase, list findings. No plan writing allowed.
+2. **DRAFT** — Write a complete plan with all required sections.
+3. **CRITIQUE** — List specific numbered weaknesses. No rewriting or finalizing.
+4. **REVISE** — Address all critiques, output `<promise>PLAN_OK</promise>` to finalize.
+
+Each phase has validation that prevents skipping ahead. The final plan is saved to `.claude/plan-output.local.md`.
 
 ## Commands
 
-### /plan-ralph PROMPT [OPTIONS]
+### /plan-ralph-loop:plan-ralph PROMPT [OPTIONS]
 
 Start a planning loop.
 
 **Options:**
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--max-iterations N` | 20 | Maximum planning iterations |
+| `--max-phases N` | 10 | Maximum phase transitions |
+| `--skip-explore` | (explore ON) | Skip the explore phase |
+| `--phases "a,b,c"` | explore,draft,critique,revise | Custom phase sequence |
 | `--no-block-tools` | (blocking ON) | Disable tool blocking |
-| `--required-sections "A,B,C"` | Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions | Required section headings |
+| `--required-sections "A,B,C"` | Goal,Scope,... | Required section headings |
 | `--completion-promise TEXT` | PLAN_OK | Completion promise value |
 
 **Examples:**
 ```
-/plan-ralph Design the authentication system
-/plan-ralph Design the caching layer --max-iterations 10
-/plan-ralph Plan database migration --no-block-tools
-/plan-ralph Refactor the API --required-sections "Goal,Steps,Risks"
+/plan-ralph-loop:plan-ralph Design the authentication system
+/plan-ralph-loop:plan-ralph Plan API refactor --skip-explore
+/plan-ralph-loop:plan-ralph Design caching layer --max-phases 8
 ```
 
-### /cancel-plan-ralph
+### /plan-ralph-loop:cancel-plan-ralph
 
 Cancel an active planning loop.
 
-## Quality Gate
+## Phase Validation
 
-The loop terminates when **both** conditions are met:
-
-1. **Promise tag**: Response ends with `<promise>PLAN_OK</promise>`
-2. **Required sections**: All required section headings are present
-
-If the promise tag is present but sections are missing, the loop continues.
-
-**Bilingual support**: Both English and Korean section headings are recognized (e.g., `## Goal` = `## 목표`).
+| Phase | Passes when... | Fails when... |
+|-------|----------------|---------------|
+| explore | File paths listed, no plan headings | Plan headings found, or no file references |
+| draft | All required section headings present | Sections missing |
+| critique | 3+ numbered items, no `<promise>` tag | Fewer than 3 items, or promise present |
+| revise | Promise tag + all sections present | Promise missing or sections missing |
 
 ## Tool Blocking
 
 By default, the following tools are blocked during planning:
 - **Edit, Write, NotebookEdit**: Always blocked
-- **Bash**: Read-only single commands only (no pipes, semicolons, or chains)
+- **Bash**: Read-only single commands only (no pipes, semicolons, redirects)
 - **Read, Glob, Grep, WebSearch, WebFetch, Task**: Always allowed
 
 Use `--no-block-tools` to disable.
@@ -67,15 +67,5 @@ Use `--no-block-tools` to disable.
 
 | File | Purpose |
 |------|---------|
-| `.claude/plan-ralph.local.md` | Loop state (active flag, iteration, config) |
-| `.claude/plan-output.local.md` | Final approved plan output |
-
-## Monitoring
-
-```bash
-# Check current iteration
-grep '^iteration:' .claude/plan-ralph.local.md
-
-# View full state
-head -10 .claude/plan-ralph.local.md
-```
+| `.claude/plan-ralph.local.md` | Loop state (phase, config) |
+| `.claude/plan-output.local.md` | Final approved plan |

@@ -12,12 +12,14 @@ if [[ ! -f "$STATE_FILE" ]]; then
   exit 0
 fi
 
-# Read current iteration
-ITERATION=$(sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$STATE_FILE" | grep '^iteration:' | sed 's/iteration: *//')
+# Read current phase and index
+FRONTMATTER=$(sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$STATE_FILE")
+PHASE=$(echo "$FRONTMATTER" | grep '^phase:' | sed 's/phase: *//')
+PHASE_INDEX=$(echo "$FRONTMATTER" | grep '^phase_index:' | sed 's/phase_index: *//')
 
 # Deactivate using portable sed (macOS + Linux compatible)
 TEMP_FILE="${STATE_FILE}.tmp.$$"
 sed 's/^active: true/active: false/' "$STATE_FILE" > "$TEMP_FILE"
 mv "$TEMP_FILE" "$STATE_FILE"
 
-echo "Planning loop cancelled (was at iteration ${ITERATION:-unknown})."
+echo "Planning loop cancelled (was at phase: ${PHASE:-unknown}, index: ${PHASE_INDEX:-unknown})."

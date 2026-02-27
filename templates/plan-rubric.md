@@ -1,3 +1,13 @@
+## Planning Process
+
+This plan will be developed in phases:
+1. **Explore**: Read the codebase and list findings (no plan yet)
+2. **Draft**: Write the initial plan with all required sections
+3. **Critique**: List specific weaknesses in the draft (no rewriting)
+4. **Revise**: Rewrite the plan addressing all critique items
+
+You will receive specific instructions for each phase. Follow them exactly.
+
 ## Planning Quality Rubric
 
 All criteria below must be satisfied for the plan to be considered complete.
@@ -20,7 +30,7 @@ All criteria below must be satisfied for the plan to be considered complete.
 - Breaking changes are called out explicitly
 - Estimated effort per step (S/M/L)
 
-### Self-Critique Checklist (review each iteration)
+### Self-Critique Checklist (used in critique phase)
 
 1. Would a new developer understand this plan without additional context?
 2. Are there implicit assumptions that should be made explicit?
