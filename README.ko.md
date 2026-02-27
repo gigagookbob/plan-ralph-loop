@@ -2,7 +2,7 @@
 
 # plansmith
 
-[Claude Code](https://docs.anthropic.com/en/docs/claude-code)용 계획 중심 반복 루프 플러그인입니다. 구조화된 단계(탐색, 초안, 비판, 수정)를 거치며 각 단계마다 검증을 수행해 고품질 구현 계획서를 만들어냅니다.
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code)용 연구 기반 계획 플러그인입니다. 구조화된 단계(이해, 탐색, 대안, 초안, 비판, 수정)를 거치며 각 단계마다 검증을 수행해 고품질 구현 계획서를 만들어냅니다.
 
 [Ralph Loop](https://ghuntley.com/ralph/) 기법에 기반하되, 테스트 통과까지 코드를 반복하는 대신 **품질 게이트가 충족될 때까지 계획 단계를 반복**합니다.
 
@@ -14,50 +14,66 @@ Claude Code로 복잡한 작업을 할 때 흔한 패턴이 있습니다: 바로
 
 해결책: **각 단계에서 근본적으로 다른 작업을 강제합니다.** 계획 전에 코드를 탐색하고, 비판 전에 초안을 쓰고, 수정 전에 비판합니다. 각 단계에는 **부정 검증**이 있어서 — 탐색 단계는 계획 헤딩을 거부하고, 비판 단계는 최종화 시도를 거부합니다. 이로써 단계를 건너뛰는 것이 구조적으로 불가능해집니다.
 
+### 연구 기반
+
+Plansmith의 단계 아키텍처는 동료 심사 논문에 근거합니다:
+
+| 기법 | 논문 | 적용 방식 |
+|------|------|-----------|
+| **다중 반복 정제** | [Self-Refine](https://arxiv.org/abs/2303.17651) (NeurIPS 2023) | 기본 2회 비판-수정 사이클 (`--refine-iterations`) |
+| **원칙 기반 비평** | [Constitutional AI](https://arxiv.org/abs/2212.08073) (Anthropic) | 12개 원칙 (P1-P12) PASS/FAIL 평가 |
+| **세션 메모리** | [Reflexion](https://arxiv.org/abs/2303.11366) (NeurIPS 2023) | FAIL 항목이 세션 간 유지 |
+| **단계 분해** | [Least-to-Most](https://arxiv.org/abs/2205.10625) (ICLR 2023) | 단계를 단순→복잡 순서로 의존성과 함께 정렬 |
+
 ## 작동 방식
 
 ```
-/plansmith:plan 인증 시스템 설계 --max-phases 10
+/plansmith:plan 인증 시스템 설계
 ```
+
+기본 흐름: 8단계, 2회 비판-수정 사이클.
 
 | 단계 | Claude가 하는 일 | 검증 내용 |
 |------|-----------------|----------|
 | **이해** | 문제 분석, 성공 기준/제약/가정 정의 | 번호 항목 3+, 이해 키워드 2+, 계획 헤딩 없어야 함 |
-| **탐색** | 코드베이스를 읽고 파일/아키텍처/패턴을 나열 | 계획 헤딩(`## 목표` 등)이 없어야 함 |
+| **탐색** | 코드베이스를 읽고 파일/아키텍처/패턴을 나열. 이전 세션 학습 주입 (Reflexion). | 계획 헤딩(`## 목표` 등)이 없어야 함 |
 | **대안** | 2~3가지 접근 방식 비교 후 하나 선택 | 옵션 2+, 추천 키워드, 장단점 키워드 필요 |
-| **초안** | 7개 필수 섹션을 포함한 완전한 계획서 작성 | 모든 섹션 헤딩이 존재해야 함 |
-| **비판** | 구체적인 번호 매긴 약점 나열 (3개 이상) | `<promise>` 태그가 없어야 함 |
-| **수정** | 모든 비판을 반영해 계획서 재작성 | Promise 태그 + 모든 섹션 = 완료 |
+| **초안** | 7개 필수 섹션을 포함한 완전한 계획서 작성. 단계를 단순→복잡 순서로 정렬 (Least-to-Most). | 모든 섹션 헤딩이 존재해야 함 |
+| **비판 (×2)** | 12개 원칙 (P1-P12)에 대해 PASS/FAIL 평가. 관점 회전: 기술적 → 유지보수성. | `<promise>` 태그 없어야 함. 번호 항목 3+, 원칙 참조 6+. |
+| **수정 (×2)** | 모든 비판을 반영해 계획서 재작성 | Promise 태그 + 모든 섹션 = 완료 (마지막 라운드만) |
 
 각 단계는 검증이 단계 합치기를 방지하기 때문에 진정으로 다른 출력을 만들어냅니다.
+
+```
+/plansmith:plan ─→ 이해 ─→ 탐색 ─→ 대안 ─→ 초안 ─→ 비판 ─→ 수정 ─→ 비판 ─→ 수정 ─→ 저장!
+                    │        │        │        │        │        │        │        │
+                 (실패?)   (실패?)   (실패?)   (실패?)  (실패?)  (실패?)  (실패?)  (실패?)
+                    ↓        ↓        ↓        ↓        ↓        ↓        ↓        ↓
+                  재시도    재시도    재시도    재시도   재시도    재시도   재시도    반복
+```
+
+완료되면 최종 계획서가 `.claude/plansmith-output.local.md`에 저장됩니다.
 
 ## 빠른 시작
 
 ```bash
-# 계획 루프 시작
-/plansmith:plan 인증 시스템 설계 --max-phases 12
+# 계획 루프 시작 (기본: 8단계, 2회 비판-수정 사이클)
+/plansmith:plan 인증 시스템 설계
+
+# 간단한 작업에 적은 반복
+/plansmith:plan 버그 수정 계획 --refine-iterations 1
 
 # 이해+탐색 건너뛰기 (문제와 코드를 이미 알 때)
 /plansmith:plan 리팩토링 계획 --skip-understand --skip-explore
 
-# 대안 비교 건너뛰기
-/plansmith:plan 버그 수정 계획 --skip-alternatives
+# 원칙 기반 대신 자유 형식 비평 사용
+/plansmith:plan 캐싱 설계 --open-critique
 
 # 필요시 취소
 /plansmith:cancel
 ```
 
 `/plansmith:plan`을 실행하면 루프가 자동으로 진행됩니다 — 수동 개입이 필요 없습니다. Stop 훅이 각 응답을 가로채서 현재 단계의 규칙에 따라 검증하고, 다음 단계의 프롬프트를 주입합니다. 검증이 실패하면 Claude가 피드백과 함께 자동으로 재시도합니다.
-
-```
-/plansmith:plan ─→ 이해 ─→ 탐색 ─→ 대안 ─→ 초안 ─→ 비판 ─→ 수정 ─→ 저장!
-                    │        │        │        │        │        │
-                 (실패?)   (실패?)   (실패?)   (실패?)  (실패?)  (실패?)
-                    ↓        ↓        ↓        ↓        ↓        ↓
-                  재시도    재시도    재시도    재시도   재시도    반복
-```
-
-완료되면 최종 계획서가 `.claude/plansmith-output.local.md`에 저장됩니다.
 
 ## Ralph Loop과의 차이점
 
@@ -66,7 +82,9 @@ Claude Code로 복잡한 작업을 할 때 흔한 패턴이 있습니다: 바로
 | **구조** | 같은 프롬프트 반복 | 다른 프롬프트를 가진 구별된 단계 |
 | **검증** | 단일 promise 태그 | 단계별 검증 (긍정 + 부정) |
 | **도구 차단** | 없음 (전체 접근) | 계획 중 Edit/Write/Bash 차단 |
-| **자기 비판** | 선택 사항 | 전용 비판 단계 (건너뛸 수 없음) |
+| **자기 비판** | 선택 사항 | 12개 원칙 기반 전용 비판 단계 (건너뛸 수 없음) |
+| **반복** | 테스트 통과까지 | 설정 가능한 비판-수정 사이클 (Self-Refine) |
+| **메모리** | 없음 | 세션 간 메모리 유지 (Reflexion) |
 | **출력** | 수정된 파일 | 저장된 계획 파일 (`.claude/plansmith-output.local.md`) |
 
 ## 커맨드
@@ -76,10 +94,14 @@ Claude Code로 복잡한 작업을 할 때 흔한 패턴이 있습니다: 바로
 | 옵션 | 기본값 | 설명 |
 |------|--------|------|
 | `--max-phases <n>` | 10 | 자동 중단까지 최대 단계 전환 수 |
+| `--refine-iterations <n>` | 2 | 비판-수정 사이클 횟수, 1-4 (Self-Refine) |
 | `--skip-understand` | (이해 ON) | 이해 단계 건너뛰기 |
 | `--skip-explore` | (탐색 ON) | 탐색 단계 건너뛰기 |
 | `--skip-alternatives` | (대안 ON) | 대안 비교 단계 건너뛰기 |
-| `--phases "a,b,c"` | understand,explore,alternatives,draft,critique,revise | 커스텀 단계 시퀀스 |
+| `--open-critique` | (원칙 ON) | 원칙 기반 대신 자유 형식 비평 사용 |
+| `--no-memory` | (메모리 ON) | 세션 메모리 비활성화 (Reflexion) |
+| `--clear-memory` | — | 축적된 세션 메모리 초기화 |
+| `--phases "a,b,c"` | (동적) | 커스텀 단계 시퀀스 (`--refine-iterations` 무시) |
 | `--no-block-tools` | (차단 ON) | 도구 차단 비활성화 |
 | `--required-sections "A,B,C"` | Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions | 필수 섹션 헤딩 |
 | `--completion-promise <text>` | PLAN_OK | Promise 태그 값 |
@@ -143,10 +165,11 @@ Claude Code로 복잡한 작업을 할 때 흔한 패턴이 있습니다: 바로
 루프 완료 시, `<promise>` 태그가 제거된 최종 계획서가 저장됩니다:
 
 ```
-.claude/plansmith-output.local.md
+.claude/plansmith-output.local.md        — 최종 계획서
+.claude/plansmith-memory.local.md        — 세션 메모리 (Reflexion, 세션 간 유지)
 ```
 
-파일에는 메타데이터가 포함된 YAML frontmatter가 있습니다:
+계획서 파일에는 메타데이터가 포함된 YAML frontmatter가 있습니다:
 
 ```yaml
 ---
