@@ -8,11 +8,13 @@ Based on the [Ralph Loop](https://ghuntley.com/ralph/) technique — but instead
 
 ## Why?
 
-Working with Claude Code on complex tasks, there's a common pattern: jump straight into writing code, lose direction halfway, revert, start over. "Just plan first" sounds obvious — but AI rarely produces a genuinely good plan on the first attempt.
+Working with Claude Code on complex tasks, there's a common pattern: jump straight into writing code, lose direction halfway, revert, start over. Using plan mode helps for simple tasks — but for complex ones, even a carefully written plan has gaps.
 
-The problem is deeper than "iterate more." If you ask an LLM to "keep improving your plan," it produces the same quality of output each time — it always tries to write a complete answer. Simply repeating the same prompt doesn't help.
+In my experience, asking the AI to "review your plan again" does surface issues — missing edge cases, wrong step ordering, overlooked dependencies. The problem is that **these issues keep coming up no matter how many times you ask**. Each review pass catches some problems but introduces or misses others. A single prompt that says "plan and critique and revise" tends to produce a plan that *looks* thorough but hasn't actually been stress-tested.
 
-The solution: **force fundamentally different work at each stage.** Explore the code before planning. Draft before critiquing. Critique before revising. Each phase has **negative validation** — the explore phase rejects plan headings, the critique phase rejects finalization attempts. This makes it structurally impossible to skip ahead.
+Research backs this up. [Self-Refine](https://arxiv.org/abs/2303.17651) (NeurIPS 2023) showed that an explicit generate → feedback → refine loop improves output by ~20% over single-shot generation — but only when each step has a distinct role. [Prompt repetition](https://arxiv.org/abs/2512.14982) can help marginally, but structured role separation is what drives real quality gains. More recently, [LLMs Can Plan Only If We Tell Them](https://arxiv.org/abs/2501.13545) (ICLR 2025) demonstrated that LLMs possess latent planning capabilities but need structured prompting to activate them — they don't plan well on their own, but they *can* plan well when given the right framework.
+
+The solution: **force fundamentally different work at each stage.** Explore the code before planning. Draft before critiquing. Critique before revising. Each phase has **negative validation** — the explore phase rejects plan headings, the critique phase rejects finalization attempts. This makes it structurally impossible to collapse everything into one pass. This approach also aligns with [test-time compute scaling](https://arxiv.org/abs/2408.03314) (ICLR 2025 Oral) — spending more inference compute through structured phases can be more effective than using a larger model.
 
 ### Research Foundations
 
@@ -24,6 +26,9 @@ Plansmith's phase architecture is grounded in peer-reviewed research:
 | **Principle-based critique** | [Constitutional AI](https://arxiv.org/abs/2212.08073) (Anthropic) | 12 principles (P1-P12) with PASS/FAIL evaluation |
 | **Session memory** | [Reflexion](https://arxiv.org/abs/2303.11366) (NeurIPS 2023) | FAIL items persist across planning sessions |
 | **Step decomposition** | [Least-to-Most](https://arxiv.org/abs/2205.10625) (ICLR 2023) | Steps ordered simple → complex with explicit dependencies |
+| **Structured planning activation** | [LLMs Can Plan Only If We Tell Them](https://arxiv.org/abs/2501.13545) (ICLR 2025) | Phase-based prompting activates latent planning capabilities |
+| **Test-time compute scaling** | [Scaling Test-Time Compute](https://arxiv.org/abs/2408.03314) (ICLR 2025 Oral) | Multi-phase inference outperforms larger single-shot models |
+| **Structured self-correction** | [SCoRe](https://arxiv.org/abs/2409.12917) (ICLR 2025 Oral) | Multi-turn self-correction yields 15.6% improvement on MATH |
 
 ## How It Works
 
