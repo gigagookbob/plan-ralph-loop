@@ -2,7 +2,7 @@
 
 # plansmith
 
-A research-backed planning plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Progresses through structured phases — understand, explore, draft, critique, revise — with validation at each step to produce high-quality implementation plans.
+A research-backed planning plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Progresses through structured phases — understand, explore, alternatives, draft, critique, revise — with validation at each step to produce high-quality implementation plans. Default: 8 phases with 2 critique-revise cycles.
 
 Based on the [Ralph Loop](https://ghuntley.com/ralph/) technique — but instead of iterating on code until tests pass, it progresses through **distinct planning phases** until a quality gate is satisfied.
 

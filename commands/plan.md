@@ -1,6 +1,6 @@
 ---
 description: "Start a planning-focused iterative loop (Plansmith)"
-argument-hint: "PROMPT [--max-phases N] [--skip-understand] [--skip-explore] [--skip-alternatives] [--no-block-tools]"
+argument-hint: "PROMPT [--max-phases N] [--refine-iterations N] [--skip-understand] [--skip-explore] [--skip-alternatives] [--open-critique] [--no-memory] [--clear-memory] [--no-block-tools]"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh:*)"]
 hide-from-slash-command-tool: "true"
 ---
@@ -23,12 +23,16 @@ You are now in **planning mode** with a phase-based workflow. File modifications
 
 ## Phase Sequence
 
+Default: 8 phases with 2 critique-revise cycles (configurable with `--refine-iterations`).
+
 1. **UNDERSTAND**: Analyze the problem. Define success criteria, constraints, assumptions. Do NOT read code yet.
-2. **EXPLORE**: Read the codebase. List files, architecture, patterns. Do NOT write a plan.
+2. **EXPLORE**: Read the codebase. List files, architecture, patterns. Past session learnings injected (Reflexion). Do NOT write a plan.
 3. **ALTERNATIVES**: Compare 2-3 approaches with pros/cons. Choose one. Do NOT write a plan.
-4. **DRAFT**: Write a complete plan with all required sections.
-5. **CRITIQUE**: List specific numbered weaknesses. Do NOT rewrite or finalize.
-6. **REVISE**: Address all critiques. Output `<promise>PLAN_OK</promise>` when done.
+4. **DRAFT**: Write a complete plan with all required sections. Steps ordered simple → complex (Least-to-Most).
+5. **CRITIQUE (round 1)**: Evaluate plan against 12 principles (P1-P12) with PASS/FAIL. Technical perspective. Do NOT rewrite or finalize.
+6. **REVISE (round 1)**: Address all critiques. Do NOT output `<promise>` yet — another critique round follows.
+7. **CRITIQUE (round 2)**: Re-evaluate from user/maintainability perspective. Do NOT rewrite or finalize.
+8. **REVISE (round 2)**: Address all critiques. Output `<promise>PLAN_OK</promise>` when done.
 
 Each phase has validation — you cannot skip ahead.
 
@@ -47,6 +51,6 @@ Each phase has validation — you cannot skip ahead.
 ## Rules
 
 - Follow the current phase's instructions exactly
-- `<promise>PLAN_OK</promise>` is only valid in the REVISE phase
+- `<promise>PLAN_OK</promise>` is only valid in the final REVISE phase
 - Each step must reference actual file paths, function names, or code patterns
 - Do NOT output a false promise to escape the loop
