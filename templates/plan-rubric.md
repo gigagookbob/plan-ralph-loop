@@ -1,10 +1,12 @@
 ## Planning Process
 
 This plan will be developed in phases:
-1. **Explore**: Read the codebase and list findings (no plan yet)
-2. **Draft**: Write the initial plan with all required sections
-3. **Critique**: List specific weaknesses in the draft (no rewriting)
-4. **Revise**: Rewrite the plan addressing all critique items
+1. **Understand**: Analyze the problem, define success criteria and constraints (no code reading yet)
+2. **Explore**: Read the codebase and list findings (no plan yet)
+3. **Alternatives**: Compare 2-3 approaches with pros/cons, choose one (no plan yet)
+4. **Draft**: Write the initial plan with all required sections
+5. **Critique**: List specific weaknesses in the draft (no rewriting)
+6. **Revise**: Rewrite the plan addressing all critique items
 
 You will receive specific instructions for each phase. Follow them exactly.
 

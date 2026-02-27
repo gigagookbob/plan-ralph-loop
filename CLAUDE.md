@@ -18,10 +18,12 @@ Three core mechanisms:
 
 ```
 /plansmith:plan → setup.sh (creates state file)
-  → Phase 1: explore (read codebase, list findings)
-  → Phase 2: draft (write complete plan)
-  → Phase 3: critique (list numbered weaknesses)
-  → Phase 4: revise (address critiques, finalize)
+  → Phase 1: understand (analyze problem, define success criteria)
+  → Phase 2: explore (read codebase, list findings)
+  → Phase 3: alternatives (compare approaches, choose one)
+  → Phase 4: draft (write complete plan)
+  → Phase 5: critique (list numbered weaknesses)
+  → Phase 6: revise (address critiques, finalize)
   → save.sh → .claude/plansmith-output.local.md
 ```
 
@@ -31,12 +33,14 @@ Each phase has distinct validation:
 
 | Phase | Passes when | Fails when |
 |-------|-------------|------------|
+| understand | 3+ numbered items, 2+ understanding keywords, no plan headings | Plan headings found, insufficient analysis |
 | explore | File paths listed, no plan headings | Plan headings found (negative validation) |
+| alternatives | 2+ options, recommendation keyword, pros/cons keyword | Missing options, recommendation, or trade-offs |
 | draft | All required section headings present | Sections missing |
 | critique | 3+ numbered items, no `<promise>` tag | Promise present (negative validation), <3 items |
 | revise | Promise tag + all sections | Promise missing or sections missing |
 
-Key insight: **negative validation** (checking what must NOT be in the output) prevents Claude from collapsing phases together.
+Key insight: **negative validation** (checking what must NOT be in the output) prevents Claude from collapsing phases together. Critique supports **perspective rotation** for repeated critique phases.
 
 ### State File
 
@@ -46,7 +50,7 @@ active: true
 phase: explore
 phase_index: 0
 max_phases: 10
-phases: "explore,draft,critique,revise"
+phases: "understand,explore,alternatives,draft,critique,revise"
 completion_promise: "PLAN_OK"
 block_tools: true
 required_sections: "Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"

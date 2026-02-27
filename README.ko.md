@@ -22,7 +22,9 @@ Claude Code로 복잡한 작업을 할 때 흔한 패턴이 있습니다: 바로
 
 | 단계 | Claude가 하는 일 | 검증 내용 |
 |------|-----------------|----------|
+| **이해** | 문제 분석, 성공 기준/제약/가정 정의 | 번호 항목 3+, 이해 키워드 2+, 계획 헤딩 없어야 함 |
 | **탐색** | 코드베이스를 읽고 파일/아키텍처/패턴을 나열 | 계획 헤딩(`## 목표` 등)이 없어야 함 |
+| **대안** | 2~3가지 접근 방식 비교 후 하나 선택 | 옵션 2+, 추천 키워드, 장단점 키워드 필요 |
 | **초안** | 7개 필수 섹션을 포함한 완전한 계획서 작성 | 모든 섹션 헤딩이 존재해야 함 |
 | **비판** | 구체적인 번호 매긴 약점 나열 (3개 이상) | `<promise>` 태그가 없어야 함 |
 | **수정** | 모든 비판을 반영해 계획서 재작성 | Promise 태그 + 모든 섹션 = 완료 |
@@ -33,10 +35,13 @@ Claude Code로 복잡한 작업을 할 때 흔한 패턴이 있습니다: 바로
 
 ```bash
 # 계획 루프 시작
-/plansmith:plan 인증 시스템 설계 --max-phases 10
+/plansmith:plan 인증 시스템 설계 --max-phases 12
 
-# 작은 코드베이스에서 탐색 단계 건너뛰기
-/plansmith:plan 리팩토링 계획 --skip-explore
+# 이해+탐색 건너뛰기 (문제와 코드를 이미 알 때)
+/plansmith:plan 리팩토링 계획 --skip-understand --skip-explore
+
+# 대안 비교 건너뛰기
+/plansmith:plan 버그 수정 계획 --skip-alternatives
 
 # 필요시 취소
 /plansmith:cancel
@@ -45,11 +50,11 @@ Claude Code로 복잡한 작업을 할 때 흔한 패턴이 있습니다: 바로
 `/plansmith:plan`을 실행하면 루프가 자동으로 진행됩니다 — 수동 개입이 필요 없습니다. Stop 훅이 각 응답을 가로채서 현재 단계의 규칙에 따라 검증하고, 다음 단계의 프롬프트를 주입합니다. 검증이 실패하면 Claude가 피드백과 함께 자동으로 재시도합니다.
 
 ```
-/plansmith:plan ─→ 탐색 ─→ 초안 ─→ 비판 ─→ 수정 ─→ 저장 완료!
-                    │        │        │        │
-                 (실패?)   (실패?)   (실패?)   (실패?)
-                    ↓        ↓        ↓        ↓
-                  재시도    재시도    재시도    반복
+/plansmith:plan ─→ 이해 ─→ 탐색 ─→ 대안 ─→ 초안 ─→ 비판 ─→ 수정 ─→ 저장!
+                    │        │        │        │        │        │
+                 (실패?)   (실패?)   (실패?)   (실패?)  (실패?)  (실패?)
+                    ↓        ↓        ↓        ↓        ↓        ↓
+                  재시도    재시도    재시도    재시도   재시도    반복
 ```
 
 완료되면 최종 계획서가 `.claude/plansmith-output.local.md`에 저장됩니다.
@@ -71,8 +76,10 @@ Claude Code로 복잡한 작업을 할 때 흔한 패턴이 있습니다: 바로
 | 옵션 | 기본값 | 설명 |
 |------|--------|------|
 | `--max-phases <n>` | 10 | 자동 중단까지 최대 단계 전환 수 |
+| `--skip-understand` | (이해 ON) | 이해 단계 건너뛰기 |
 | `--skip-explore` | (탐색 ON) | 탐색 단계 건너뛰기 |
-| `--phases "a,b,c"` | explore,draft,critique,revise | 커스텀 단계 시퀀스 |
+| `--skip-alternatives` | (대안 ON) | 대안 비교 단계 건너뛰기 |
+| `--phases "a,b,c"` | understand,explore,alternatives,draft,critique,revise | 커스텀 단계 시퀀스 |
 | `--no-block-tools` | (차단 ON) | 도구 차단 비활성화 |
 | `--required-sections "A,B,C"` | Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions | 필수 섹션 헤딩 |
 | `--completion-promise <text>` | PLAN_OK | Promise 태그 값 |

@@ -22,7 +22,9 @@ The solution: **force fundamentally different work at each stage.** Explore the 
 
 | Phase | What Claude does | What's validated |
 |-------|-----------------|-----------------|
+| **Understand** | Analyzes the problem, defines success criteria/constraints/assumptions | 3+ numbered items, 2+ understanding keywords, no plan headings |
 | **Explore** | Reads codebase, lists files/architecture/patterns | Must NOT contain plan headings (`## Goal`, etc.) |
+| **Alternatives** | Compares 2-3 approaches with pros/cons, chooses one | 2+ options, recommendation keyword, pros/cons keyword |
 | **Draft** | Writes complete plan with all 7 required sections | All section headings must be present |
 | **Critique** | Lists specific numbered weaknesses (3+ required) | Must NOT contain `<promise>` tag |
 | **Revise** | Rewrites plan addressing every critique item | Promise tag + all sections = done |
@@ -33,10 +35,13 @@ Each phase produces genuinely different output because the validation prevents c
 
 ```bash
 # Start a planning loop
-/plansmith:plan Design the authentication system --max-phases 10
+/plansmith:plan Design the authentication system --max-phases 12
 
-# Skip explore phase for small codebases
-/plansmith:plan Plan the refactor --skip-explore
+# Skip understand+explore when problem and code are known
+/plansmith:plan Plan the refactor --skip-understand --skip-explore
+
+# Skip alternatives comparison
+/plansmith:plan Fix the bug --skip-alternatives
 
 # Cancel if needed
 /plansmith:cancel
@@ -45,11 +50,11 @@ Each phase produces genuinely different output because the validation prevents c
 Once you run `/plansmith:plan`, the loop runs automatically — no manual intervention needed. The Stop hook intercepts each response, validates it against the current phase's rules, and injects the next phase's prompt. If validation fails, Claude automatically retries with feedback.
 
 ```
-/plansmith:plan ─→ explore ─→ draft ─→ critique ─→ revise ─→ saved!
-                      │          │          │          │
-                   (fail?)    (fail?)    (fail?)    (fail?)
-                      ↓          ↓          ↓          ↓
-                   retry      retry      retry      iterate
+/plansmith:plan ─→ understand ─→ explore ─→ alternatives ─→ draft ─→ critique ─→ revise ─→ saved!
+                      │            │            │              │          │          │
+                   (fail?)      (fail?)      (fail?)        (fail?)    (fail?)    (fail?)
+                      ↓            ↓            ↓              ↓          ↓          ↓
+                   retry        retry        retry          retry      retry      iterate
 ```
 
 When complete, the final plan is saved to `.claude/plansmith-output.local.md`.
@@ -71,8 +76,10 @@ When complete, the final plan is saved to `.claude/plansmith-output.local.md`.
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--max-phases <n>` | 10 | Maximum phase transitions before auto-stop |
+| `--skip-understand` | (understand ON) | Skip the understand phase |
 | `--skip-explore` | (explore ON) | Skip the explore phase |
-| `--phases "a,b,c"` | explore,draft,critique,revise | Custom phase sequence |
+| `--skip-alternatives` | (alternatives ON) | Skip the alternatives phase |
+| `--phases "a,b,c"` | understand,explore,alternatives,draft,critique,revise | Custom phase sequence |
 | `--no-block-tools` | (blocking ON) | Disable tool blocking |
 | `--required-sections "A,B,C"` | Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions | Required section headings |
 | `--completion-promise <text>` | PLAN_OK | Promise tag value |
