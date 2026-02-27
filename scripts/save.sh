@@ -10,11 +10,11 @@ LAST_MSG="${2:-}"
 EXIT_REASON="${3:-completed}"
 
 if [[ -z "$LAST_MSG" ]]; then
-  echo "Warning: save-plan has no message to save" >&2
+  echo "Warning: plansmith save has no message to save" >&2
   exit 0
 fi
 
-OUTPUT_FILE="${CWD}/.claude/plan-output.local.md"
+OUTPUT_FILE="${CWD}/.claude/plansmith-output.local.md"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 # Strip <promise>...</promise> tags from the output

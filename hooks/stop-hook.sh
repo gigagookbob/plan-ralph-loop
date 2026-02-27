@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Plan Ralph Loop Stop Hook
-# Prevents session exit when a plan-ralph-loop is active.
+# Plansmith Stop Hook
+# Prevents session exit when a plansmith is active.
 # Implements a phase machine: explore → draft → critique → revise → iterate
 # Each phase has distinct validation and prompts.
 
@@ -10,7 +10,7 @@ set -euo pipefail
 # --- 0. Dependency check ---
 for cmd in jq perl; do
   if ! command -v "$cmd" &>/dev/null; then
-    echo "Warning: plan-ralph-loop requires '$cmd' but it's not installed." >&2
+    echo "Warning: plansmith requires '$cmd' but it's not installed." >&2
     exit 0
   fi
 done
@@ -19,14 +19,14 @@ done
 HOOK_INPUT=$(cat)
 
 # --- 2. Check if planning loop is active ---
-RALPH_STATE_FILE=".claude/plan-ralph.local.md"
+STATE_FILE=".claude/plansmith.local.md"
 
-if [[ ! -f "$RALPH_STATE_FILE" ]]; then
+if [[ ! -f "$STATE_FILE" ]]; then
   exit 0
 fi
 
 # --- 3. Parse YAML frontmatter ---
-FRONTMATTER=$(sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$RALPH_STATE_FILE")
+FRONTMATTER=$(sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$STATE_FILE")
 
 ACTIVE=$(echo "$FRONTMATTER" | grep '^active:' | awk '{print $2}')
 PHASE=$(echo "$FRONTMATTER" | grep '^phase:' | sed 's/phase: *//')
@@ -42,21 +42,21 @@ fi
 
 # Graceful fallback for old-format state files (missing phase field)
 if [[ -z "$PHASE" ]]; then
-  echo "Warning: plan-ralph-loop state file uses old format. Deactivating." >&2
-  sed_inplace "s/^active: true/active: false/" "$RALPH_STATE_FILE" 2>/dev/null || true
+  echo "Warning: plansmith state file uses old format. Deactivating." >&2
+  sed_inplace "s/^active: true/active: false/" "$STATE_FILE" 2>/dev/null || true
   exit 0
 fi
 
 # --- 4. Validate numeric fields ---
 if [[ ! "$PHASE_INDEX" =~ ^[0-9]+$ ]]; then
-  echo "Warning: plan-ralph-loop state file corrupted (phase_index: '$PHASE_INDEX')" >&2
-  rm "$RALPH_STATE_FILE"
+  echo "Warning: plansmith state file corrupted (phase_index: '$PHASE_INDEX')" >&2
+  rm "$STATE_FILE"
   exit 0
 fi
 
 if [[ ! "$MAX_PHASES" =~ ^[0-9]+$ ]]; then
-  echo "Warning: plan-ralph-loop state file corrupted (max_phases: '$MAX_PHASES')" >&2
-  rm "$RALPH_STATE_FILE"
+  echo "Warning: plansmith state file corrupted (max_phases: '$MAX_PHASES')" >&2
+  rm "$STATE_FILE"
   exit 0
 fi
 
@@ -77,8 +77,8 @@ advance_phase() {
   else
     next_phase="iterate"
   fi
-  sed_inplace "s/^phase: .*/phase: $next_phase/" "$RALPH_STATE_FILE"
-  sed_inplace "s/^phase_index: .*/phase_index: $next_index/" "$RALPH_STATE_FILE"
+  sed_inplace "s/^phase: .*/phase: $next_phase/" "$STATE_FILE"
+  sed_inplace "s/^phase_index: .*/phase_index: $next_index/" "$STATE_FILE"
 }
 
 # --- Helper: block stop and inject prompt ---
@@ -97,15 +97,15 @@ block_with() {
 
 # --- 5. Check max phases ---
 if [[ $MAX_PHASES -gt 0 ]] && [[ $PHASE_INDEX -ge $MAX_PHASES ]]; then
-  echo "Plan Ralph Loop: Max phases ($MAX_PHASES) reached." >&2
+  echo "Plansmith: Max phases ($MAX_PHASES) reached." >&2
 
   MAX_SAVE_OUTPUT=$(echo "$HOOK_INPUT" | jq -r '.last_assistant_message // empty' 2>/dev/null || true)
   if [[ -n "$MAX_SAVE_OUTPUT" ]]; then
     PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-    bash "$PLUGIN_ROOT/scripts/save-plan.sh" "." "$MAX_SAVE_OUTPUT" "max_phases_reached"
+    bash "$PLUGIN_ROOT/scripts/save.sh" "." "$MAX_SAVE_OUTPUT" "max_phases_reached"
   fi
 
-  sed_inplace "s/^active: true/active: false/" "$RALPH_STATE_FILE"
+  sed_inplace "s/^active: true/active: false/" "$STATE_FILE"
   exit 0
 fi
 
@@ -127,13 +127,13 @@ if [[ -z "$LAST_OUTPUT" ]]; then
 fi
 
 if [[ -z "$LAST_OUTPUT" ]]; then
-  echo "Warning: plan-ralph-loop could not extract assistant message" >&2
-  rm "$RALPH_STATE_FILE"
+  echo "Warning: plansmith could not extract assistant message" >&2
+  rm "$STATE_FILE"
   exit 0
 fi
 
 # Extract the original prompt (everything after closing ---)
-PROMPT_TEXT=$(awk '/^---$/{i++; next} i>=2' "$RALPH_STATE_FILE")
+PROMPT_TEXT=$(awk '/^---$/{i++; next} i>=2' "$STATE_FILE")
 
 # --- 7. Phase machine ---
 
@@ -158,7 +158,7 @@ case "$PHASE" in
     # NEGATIVE VALIDATION: must NOT contain plan section headings
     if echo "$LAST_OUTPUT" | grep -qiE "^#+ +(Goal|목표|Steps|단계|Scope|범위|Non-Scope|비범위|Verification|검증|Risks|리스크|Open Questions|오픈 질문)"; then
       block_with \
-        "[plan-ralph-loop] Phase 1: EXPLORE — You wrote plan section headings. Do NOT write a plan yet.
+        "[plansmith] Phase 1: EXPLORE — You wrote plan section headings. Do NOT write a plan yet.
 
 In this phase, you must ONLY report what you found in the codebase:
 
@@ -179,7 +179,7 @@ $PROMPT_TEXT" \
     FILE_REF_COUNT=$(echo "$LAST_OUTPUT" | grep -cE '(src/|lib/|\.ts|\.js|\.py|\.go|\.rs|\.java|\.jsx|\.tsx|package\.json|Cargo\.toml|go\.mod|requirements\.txt|\.config|\.json|\.md)' || true)
     if [[ "$FILE_REF_COUNT" -lt 2 ]]; then
       block_with \
-        "[plan-ralph-loop] Phase 1: EXPLORE — Not enough codebase exploration detected.
+        "[plansmith] Phase 1: EXPLORE — Not enough codebase exploration detected.
 
 Please read actual files using Read, Glob, and Grep tools. Then list your findings:
 
@@ -197,7 +197,7 @@ $PROMPT_TEXT" \
     # Explore passed — advance to draft
     advance_phase
     block_with \
-      "[plan-ralph-loop] Phase 2: DRAFT — Now write the plan.
+      "[plansmith] Phase 2: DRAFT — Now write the plan.
 
 Based on your exploration findings, write a complete plan with ALL required sections:
 $REQUIRED_SECTIONS
@@ -229,7 +229,7 @@ $PROMPT_TEXT" \
       MISSING_LIST=$(printf ", %s" "${MISSING[@]}")
       MISSING_LIST=${MISSING_LIST:2}
       block_with \
-        "[plan-ralph-loop] Phase 2: DRAFT — Missing sections: $MISSING_LIST
+        "[plansmith] Phase 2: DRAFT — Missing sections: $MISSING_LIST
 
 Please add the missing sections and resubmit the complete plan.
 Required sections: $REQUIRED_SECTIONS
@@ -242,7 +242,7 @@ $PROMPT_TEXT" \
     # Draft passed — advance to critique
     advance_phase
     block_with \
-      "[plan-ralph-loop] Phase 3: CRITIQUE — Review your plan. Do NOT rewrite it.
+      "[plansmith] Phase 3: CRITIQUE — Review your plan. Do NOT rewrite it.
 
 Re-read the plan you just wrote. List SPECIFIC weaknesses as a numbered list.
 For each weakness, explain:
@@ -270,7 +270,7 @@ $PROMPT_TEXT" \
     # NEGATIVE VALIDATION: must NOT contain promise tag
     if echo "$LAST_OUTPUT" | grep -qE '<promise>'; then
       block_with \
-        "[plan-ralph-loop] Phase 3: CRITIQUE — Do NOT finalize during critique.
+        "[plansmith] Phase 3: CRITIQUE — Do NOT finalize during critique.
 
 You included a <promise> tag. This phase is for identifying weaknesses ONLY.
 List at least 3 specific, numbered weaknesses in the plan. No rewriting, no finalizing.
@@ -284,7 +284,7 @@ $PROMPT_TEXT" \
     NUMBERED_COUNT=$(echo "$LAST_OUTPUT" | grep -cE '^\s*[0-9]+\.' || true)
     if [[ "$NUMBERED_COUNT" -lt 3 ]]; then
       block_with \
-        "[plan-ralph-loop] Phase 3: CRITIQUE — Not enough specific critiques.
+        "[plansmith] Phase 3: CRITIQUE — Not enough specific critiques.
 
 Found $NUMBERED_COUNT numbered items, need at least 3.
 List specific, numbered weaknesses (e.g., '1. The step ordering is wrong because...')
@@ -300,7 +300,7 @@ $PROMPT_TEXT" \
     # Critique passed — advance to revise
     advance_phase
     block_with \
-      "[plan-ralph-loop] Phase 4: REVISE — Rewrite the plan addressing every critique item.
+      "[plansmith] Phase 4: REVISE — Rewrite the plan addressing every critique item.
 
 Address EVERY numbered weakness from your critique. Rewrite the complete plan with all fixes applied.
 
@@ -332,7 +332,7 @@ $PROMPT_TEXT" \
     if [[ "$PROMISE_MATCHED" != "true" ]]; then
       advance_phase
       block_with \
-        "[plan-ralph-loop] Phase: ITERATE — Plan not yet finalized.
+        "[plansmith] Phase: ITERATE — Plan not yet finalized.
 
 Continue improving the plan:
 1. SELF-CRITIQUE: What is still weak, vague, or missing?
@@ -362,7 +362,7 @@ $PROMPT_TEXT" \
       MISSING_LIST=${MISSING_LIST:2}
       advance_phase
       block_with \
-        "[plan-ralph-loop] Quality gate: Missing sections — $MISSING_LIST
+        "[plansmith] Quality gate: Missing sections — $MISSING_LIST
 
 You included <promise>$COMPLETION_PROMISE</promise> but these sections are missing:
 $MISSING_LIST
@@ -376,17 +376,17 @@ $PROMPT_TEXT" \
 
     # ALL CHECKS PASSED — save and deactivate
     PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-    bash "$PLUGIN_ROOT/scripts/save-plan.sh" "." "$LAST_OUTPUT" "completed"
+    bash "$PLUGIN_ROOT/scripts/save.sh" "." "$LAST_OUTPUT" "completed"
 
-    sed_inplace "s/^active: true/active: false/" "$RALPH_STATE_FILE"
+    sed_inplace "s/^active: true/active: false/" "$STATE_FILE"
 
-    echo "Plan Ralph Loop complete! Plan saved to .claude/plan-output.local.md" >&2
+    echo "Plansmith complete! Plan saved to .claude/plansmith-output.local.md" >&2
     exit 0
     ;;
 
   *)
-    echo "Warning: plan-ralph-loop unknown phase '$PHASE'. Deactivating." >&2
-    sed_inplace "s/^active: true/active: false/" "$RALPH_STATE_FILE"
+    echo "Warning: plansmith unknown phase '$PHASE'. Deactivating." >&2
+    sed_inplace "s/^active: true/active: false/" "$STATE_FILE"
     exit 0
     ;;
 esac

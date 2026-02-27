@@ -1,5 +1,5 @@
 {
-  "description": "Plan Ralph Loop: Stop hook for iteration control + PreToolUse hook for tool blocking during planning",
+  "description": "Plansmith: Stop hook for iteration control + PreToolUse hook for tool blocking during planning",
   "hooks": {
     "Stop": [
       {

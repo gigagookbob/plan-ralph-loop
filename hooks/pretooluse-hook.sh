@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Plan Ralph Loop PreToolUse Hook
+# Plansmith PreToolUse Hook
 # Blocks file-modifying tools during the planning phase.
 
 set -euo pipefail
@@ -15,7 +15,7 @@ HOOK_INPUT=$(cat)
 TOOL_NAME=$(echo "$HOOK_INPUT" | jq -r '.tool_name')
 
 # --- 2. Check if planning loop is active with tool blocking ---
-STATE_FILE=".claude/plan-ralph.local.md"
+STATE_FILE=".claude/plansmith.local.md"
 
 if [[ ! -f "$STATE_FILE" ]]; then
   exit 0
@@ -34,7 +34,7 @@ case "$TOOL_NAME" in
   Edit|Write|NotebookEdit)
     # Always block file-modifying tools during planning
     jq -n \
-      --arg reason "[plan-ralph-loop] File modification is blocked during the planning phase. You are in READ-ONLY mode. Use Read, Glob, Grep, WebSearch, and WebFetch to explore the codebase." \
+      --arg reason "[plansmith] File modification is blocked during the planning phase. You are in READ-ONLY mode. Use Read, Glob, Grep, WebSearch, and WebFetch to explore the codebase." \
       '{
         "hookSpecificOutput": {
           "hookEventName": "PreToolUse",
@@ -58,7 +58,7 @@ case "$TOOL_NAME" in
     # This prevents bypass like "ls; rm -rf /", "cat foo | xargs rm", "echo x > file"
     if echo "$COMMAND" | grep -qE '[;|&>]|\$\(|`'; then
       jq -n \
-        --arg reason "[plan-ralph-loop] Compound commands (pipes, chains, semicolons, redirects) are blocked during the planning phase. Use simple, single read-only commands only." \
+        --arg reason "[plansmith] Compound commands (pipes, chains, semicolons, redirects) are blocked during the planning phase. Use simple, single read-only commands only." \
         '{
           "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
@@ -76,7 +76,7 @@ case "$TOOL_NAME" in
 
     # Block everything else
     jq -n \
-      --arg reason "[plan-ralph-loop] This Bash command is not in the read-only allowlist. During the planning phase, only read-only commands are allowed (ls, cat, grep, git log, git diff, find, etc.). Rewrite your command to be read-only, or wait until the planning phase is complete." \
+      --arg reason "[plansmith] This Bash command is not in the read-only allowlist. During the planning phase, only read-only commands are allowed (ls, cat, grep, git log, git diff, find, etc.). Rewrite your command to be read-only, or wait until the planning phase is complete." \
       '{
         "hookSpecificOutput": {
           "hookEventName": "PreToolUse",

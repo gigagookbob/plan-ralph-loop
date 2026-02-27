@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Plan Ralph Loop Setup Script
+# Plansmith Setup Script
 # Parses CLI arguments and creates the state file for in-session planning loop.
 # Uses a phase machine: explore → draft → critique → revise
 
@@ -9,7 +9,7 @@ set -euo pipefail
 # --- Dependency check ---
 for cmd in jq perl; do
   if ! command -v "$cmd" &>/dev/null; then
-    echo "Error: plan-ralph-loop requires '$cmd'. Please install it." >&2
+    echo "Error: plansmith requires '$cmd'. Please install it." >&2
     exit 1
   fi
 done
@@ -27,10 +27,10 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     -h|--help)
       cat << 'HELP_EOF'
-Plan Ralph Loop - Planning-focused iterative loop with phase machine
+Plansmith - Planning-focused iterative loop with phase machine
 
 USAGE:
-  /plan-ralph PROMPT [OPTIONS]
+  /plansmith:plan PROMPT [OPTIONS]
 
 ARGUMENTS:
   PROMPT    Description of what to plan (can be multiple words)
@@ -55,13 +55,13 @@ PHASES:
   iterate   Further critique+revision cycles if needed
 
 EXAMPLES:
-  /plan-ralph Design the authentication system --max-phases 10
-  /plan-ralph Plan API refactor --skip-explore
-  /plan-ralph Design caching --phases "draft,critique,revise"
-  /plan-ralph Plan DB migration --no-block-tools
+  /plansmith:plan Design the authentication system --max-phases 10
+  /plansmith:plan Plan API refactor --skip-explore
+  /plansmith:plan Design caching --phases "draft,critique,revise"
+  /plansmith:plan Plan DB migration --no-block-tools
 
 STOPPING:
-  /cancel-plan-ralph to cancel the loop.
+  /plansmith:cancel to cancel the loop.
 HELP_EOF
       exit 0
       ;;
@@ -123,10 +123,10 @@ PROMPT="${PROMPT_PARTS[*]}"
 if [[ -z "$PROMPT" ]]; then
   echo "Error: No planning prompt provided." >&2
   echo "" >&2
-  echo "  Usage: /plan-ralph PROMPT [OPTIONS]" >&2
-  echo "  Example: /plan-ralph Design auth system --max-phases 10" >&2
+  echo "  Usage: /plansmith:plan PROMPT [OPTIONS]" >&2
+  echo "  Example: /plansmith:plan Design auth system --max-phases 10" >&2
   echo "" >&2
-  echo "  For help: /plan-ralph --help" >&2
+  echo "  For help: /plansmith:plan --help" >&2
   exit 1
 fi
 
@@ -134,11 +134,11 @@ fi
 mkdir -p .claude
 
 # Check for existing active loop
-STATE_FILE=".claude/plan-ralph.local.md"
+STATE_FILE=".claude/plansmith.local.md"
 if [[ -f "$STATE_FILE" ]]; then
   EXISTING_ACTIVE=$(sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$STATE_FILE" | grep '^active:' | awk '{print $2}')
   if [[ "$EXISTING_ACTIVE" == "true" ]]; then
-    echo "Error: A planning loop is already active. Use /cancel-plan-ralph first." >&2
+    echo "Error: A planning loop is already active. Use /plansmith:cancel first." >&2
     exit 1
   fi
 fi
@@ -176,7 +176,7 @@ EOF
 
 # Output setup message
 cat <<EOF
-Plan Ralph Loop activated!
+Plansmith activated!
 
   Prompt: $PROMPT
   Phases: $PHASES

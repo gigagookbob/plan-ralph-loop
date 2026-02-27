@@ -1,12 +1,12 @@
 ---
-description: "Show Plan Ralph Loop help"
+description: "Show Plansmith help"
 ---
 
-# Plan Ralph Loop Help
+# Plansmith Help
 
 Please explain the following to the user:
 
-## What is Plan Ralph Loop?
+## What is Plansmith?
 
 A planning-focused variant of [Ralph Loop](https://ghuntley.com/ralph/). Instead of iterating on code until tests pass, it progresses through **structured phases** to produce a high-quality plan.
 
@@ -16,11 +16,11 @@ A planning-focused variant of [Ralph Loop](https://ghuntley.com/ralph/). Instead
 3. **CRITIQUE** — List specific numbered weaknesses. No rewriting or finalizing.
 4. **REVISE** — Address all critiques, output `<promise>PLAN_OK</promise>` to finalize.
 
-Each phase has validation that prevents skipping ahead. The final plan is saved to `.claude/plan-output.local.md`.
+Each phase has validation that prevents skipping ahead. The final plan is saved to `.claude/plansmith-output.local.md`.
 
 ## Commands
 
-### /plan-ralph-loop:plan-ralph PROMPT [OPTIONS]
+### /plansmith:plan PROMPT [OPTIONS]
 
 Start a planning loop.
 
@@ -36,12 +36,12 @@ Start a planning loop.
 
 **Examples:**
 ```
-/plan-ralph-loop:plan-ralph Design the authentication system
-/plan-ralph-loop:plan-ralph Plan API refactor --skip-explore
-/plan-ralph-loop:plan-ralph Design caching layer --max-phases 8
+/plansmith:plan Design the authentication system
+/plansmith:plan Plan API refactor --skip-explore
+/plansmith:plan Design caching layer --max-phases 8
 ```
 
-### /plan-ralph-loop:cancel-plan-ralph
+### /plansmith:cancel
 
 Cancel an active planning loop.
 
@@ -67,5 +67,5 @@ Use `--no-block-tools` to disable.
 
 | File | Purpose |
 |------|---------|
-| `.claude/plan-ralph.local.md` | Loop state (phase, config) |
-| `.claude/plan-output.local.md` | Final approved plan |
+| `.claude/plansmith.local.md` | Loop state (phase, config) |
+| `.claude/plansmith-output.local.md` | Final approved plan |

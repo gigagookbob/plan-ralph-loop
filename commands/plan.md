@@ -1,21 +1,21 @@
 ---
-description: "Start a planning-focused iterative loop (Plan Ralph Loop)"
+description: "Start a planning-focused iterative loop (Plansmith)"
 argument-hint: "PROMPT [--max-phases N] [--skip-explore] [--no-block-tools]"
-allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup-plan-ralph.sh:*)"]
+allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh:*)"]
 hide-from-slash-command-tool: "true"
 ---
 
-# Plan Ralph Loop
+# Plansmith
 
 IMPORTANT: You MUST run the setup script FIRST before doing anything else.
 
 Run this exact command using the Bash tool:
 
 ```
-"${CLAUDE_PLUGIN_ROOT}/scripts/setup-plan-ralph.sh" $ARGUMENTS
+"${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh" $ARGUMENTS
 ```
 
-Wait for "Plan Ralph Loop activated!" output.
+Wait for "Plansmith activated!" output.
 
 ---
 

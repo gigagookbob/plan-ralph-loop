@@ -1,4 +1,4 @@
-# plan-ralph-loop
+# plansmith
 
 A planning-focused iterative loop plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Progresses through structured phases — explore, draft, critique, revise — with validation at each step to produce high-quality implementation plans.
 
@@ -15,7 +15,7 @@ The solution: **force fundamentally different work at each stage.** Explore the 
 ## How It Works
 
 ```
-/plan-ralph-loop:plan-ralph Design auth system --max-phases 10
+/plansmith:plan Design auth system --max-phases 10
 ```
 
 | Phase | What Claude does | What's validated |
@@ -31,31 +31,31 @@ Each phase produces genuinely different output because the validation prevents c
 
 ```bash
 # Load the plugin
-claude --plugin-dir /path/to/plan-ralph-loop
+claude --plugin-dir /path/to/plansmith
 
 # Start a planning loop
-/plan-ralph-loop:plan-ralph Design the authentication system --max-phases 10
+/plansmith:plan Design the authentication system --max-phases 10
 
 # Skip explore phase for small codebases
-/plan-ralph-loop:plan-ralph Plan the refactor --skip-explore
+/plansmith:plan Plan the refactor --skip-explore
 
 # Cancel if needed
-/plan-ralph-loop:cancel-plan-ralph
+/plansmith:cancel
 ```
 
 ## How It Differs from Ralph Loop
 
-| | ralph-loop | plan-ralph-loop |
+| | ralph-loop | plansmith |
 |--|-----------|-----------------|
 | **Structure** | Same prompt repeated | Distinct phases with different prompts |
 | **Validation** | Single promise tag | Per-phase validation (positive + negative) |
 | **Tool blocking** | None (full access) | Edit/Write/Bash blocked during planning |
 | **Self-critique** | Optional | Dedicated critique phase (cannot skip) |
-| **Output** | Modified files | Saved plan file (`.claude/plan-output.local.md`) |
+| **Output** | Modified files | Saved plan file (`.claude/plansmith-output.local.md`) |
 
 ## Commands
 
-### `/plan-ralph-loop:plan-ralph <PROMPT> [OPTIONS]`
+### `/plansmith:plan <PROMPT> [OPTIONS]`
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -66,11 +66,11 @@ claude --plugin-dir /path/to/plan-ralph-loop
 | `--required-sections "A,B,C"` | Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions | Required section headings |
 | `--completion-promise <text>` | PLAN_OK | Promise tag value |
 
-### `/plan-ralph-loop:cancel-plan-ralph`
+### `/plansmith:cancel`
 
 Cancel an active planning loop.
 
-### `/plan-ralph-loop:help`
+### `/plansmith:help`
 
 Show detailed help.
 
@@ -126,7 +126,7 @@ Use `--no-block-tools` to disable.
 
 ## Compatibility
 
-Uses a separate state file (`.claude/plan-ralph.local.md`) from the official `ralph-loop` plugin. Both can be installed simultaneously.
+Uses a separate state file (`.claude/plansmith.local.md`) from the official `ralph-loop` plugin. Both can be installed simultaneously.
 
 ## Requirements
 
@@ -137,8 +137,8 @@ Uses a separate state file (`.claude/plan-ralph.local.md`) from the official `ra
 ## Installation
 
 ```bash
-git clone https://github.com/gigagookbob/plan-ralph-loop.git
-claude --plugin-dir /path/to/plan-ralph-loop
+git clone https://github.com/gigagookbob/plansmith.git
+claude --plugin-dir /path/to/plansmith
 ```
 
 ## License

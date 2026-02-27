@@ -1,5 +1,5 @@
 {
-  "name": "plan-ralph-loop",
+  "name": "plansmith",
   "version": "2.0.0",
   "description": "Structured planning phases (explore, draft, critique, revise) with per-phase validation and tool blocking for Claude Code.",
   "author": {

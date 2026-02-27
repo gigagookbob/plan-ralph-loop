@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Project Overview
 
-plan-ralph-loop is a Claude Code plugin that progresses through structured planning phases (explore → draft → critique → revise) with per-phase validation. Inspired by [Ralph Loop](https://ghuntley.com/ralph/), but instead of iterating on code until tests pass, it produces a "ready-to-start" implementation plan through distinct phases.
+plansmith is a Claude Code plugin that progresses through structured planning phases (explore → draft → critique → revise) with per-phase validation. Inspired by [Ralph Loop](https://ghuntley.com/ralph/), but instead of iterating on code until tests pass, it produces a "ready-to-start" implementation plan through distinct phases.
 
 ## Architecture
 
@@ -17,12 +17,12 @@ Three core mechanisms:
 ### Execution Flow
 
 ```
-/plan-ralph-loop:plan-ralph → setup-plan-ralph.sh (creates state file)
+/plansmith:plan → setup.sh (creates state file)
   → Phase 1: explore (read codebase, list findings)
   → Phase 2: draft (write complete plan)
   → Phase 3: critique (list numbered weaknesses)
   → Phase 4: revise (address critiques, finalize)
-  → save-plan.sh → .claude/plan-output.local.md
+  → save.sh → .claude/plansmith-output.local.md
 ```
 
 ### Phase Machine (stop-hook.sh)
@@ -40,7 +40,7 @@ Key insight: **negative validation** (checking what must NOT be in the output) p
 
 ### State File
 
-`.claude/plan-ralph.local.md` with YAML frontmatter:
+`.claude/plansmith.local.md` with YAML frontmatter:
 ```yaml
 active: true
 phase: explore
@@ -81,9 +81,9 @@ System tools only (no npm/pip):
 |------|------|
 | `hooks/stop-hook.sh` | Phase machine + quality gate (core logic) |
 | `hooks/pretooluse-hook.sh` | Tool blocking during planning |
-| `scripts/setup-plan-ralph.sh` | CLI arg parsing + state file creation |
-| `scripts/save-plan.sh` | Final plan saving |
-| `scripts/cancel-plan-ralph.sh` | Loop cancellation |
+| `scripts/setup.sh` | CLI arg parsing + state file creation |
+| `scripts/save.sh` | Final plan saving |
+| `scripts/cancel.sh` | Loop cancellation |
 | `templates/plan-rubric.md` | Quality rubric template |
 
 ## Known Limitations

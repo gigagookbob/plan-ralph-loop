@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Cancel Plan Ralph Loop
+# Cancel Plansmith
 # Deactivates the planning loop state file.
 
 set -euo pipefail
 
-STATE_FILE=".claude/plan-ralph.local.md"
+STATE_FILE=".claude/plansmith.local.md"
 
 if [[ ! -f "$STATE_FILE" ]]; then
   echo "No active planning loop found."
