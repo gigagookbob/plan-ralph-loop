@@ -48,6 +48,10 @@ MAX_PHASES=$(echo "$FRONTMATTER" | grep '^max_phases:' | sed 's/max_phases: *//'
 COMPLETION_PROMISE=$(echo "$FRONTMATTER" | grep '^completion_promise:' | sed 's/completion_promise: *//' | sed 's/^"\(.*\)"$/\1/')
 REQUIRED_SECTIONS=$(echo "$FRONTMATTER" | grep '^required_sections:' | sed 's/required_sections: *//' | sed 's/^"\(.*\)"$/\1/')
 PHASES_STR=$(echo "$FRONTMATTER" | grep '^phases:' | sed 's/phases: *//' | sed 's/^"\(.*\)"$/\1/')
+CRITIQUE_MODE=$(echo "$FRONTMATTER" | grep '^critique_mode:' | sed 's/critique_mode: *//' | sed 's/^"\(.*\)"$/\1/')
+USE_MEMORY=$(echo "$FRONTMATTER" | grep '^use_memory:' | sed 's/use_memory: *//')
+CRITIQUE_MODE="${CRITIQUE_MODE:-principles}"
+USE_MEMORY="${USE_MEMORY:-true}"
 
 if [[ "$ACTIVE" != "true" ]]; then
   exit 0
@@ -209,6 +213,20 @@ $PROMPT_TEXT" \
 
     # Understand passed — advance to explore
     advance_phase
+
+    # Reflexion: inject session memory if available
+    MEMORY_INJECT=""
+    if [[ "$USE_MEMORY" == "true" ]] && [[ -f ".claude/plansmith-memory.local.md" ]]; then
+      MEMORY_CONTEXT=$(tail -30 ".claude/plansmith-memory.local.md")
+      if [[ -n "$MEMORY_CONTEXT" ]]; then
+        MEMORY_INJECT="
+
+LESSONS FROM PREVIOUS PLANNING SESSIONS (avoid these patterns):
+$MEMORY_CONTEXT
+"
+      fi
+    fi
+
     block_with \
       "[plansmith] $PROGRESS Phase: EXPLORE — Now read the codebase.
 
@@ -220,7 +238,7 @@ Reference your problem definition, success criteria, and constraints as you expl
 3. RELEVANT PATTERNS: Existing patterns that affect the planned work
 4. DEPENDENCIES: External and internal dependencies
 5. CONSTRAINTS: Technical constraints discovered
-
+$MEMORY_INJECT
 Do NOT include headings like ## Goal, ## Steps, ## Scope, etc.
 
 Original request:
@@ -343,6 +361,12 @@ $PROMPT_TEXT" \
 Based on the approach you selected, write a complete plan with ALL required sections:
 $REQUIRED_SECTIONS
 
+STEP ORDERING (Least-to-Most decomposition):
+- Order steps from simplest/most independent to most complex/most dependent
+- Each step should build on the foundation of previous steps
+- For each step, explicitly state which previous steps it depends on (e.g., 'Depends on: Step 2')
+- If two steps are independent, note that they can be parallelized
+
 Each step must reference specific files and functions you discovered during exploration.
 Use English or Korean section headings (both accepted).
 
@@ -382,10 +406,19 @@ $PROMPT_TEXT" \
 
     # Draft passed — advance to critique
     advance_phase
-    block_with \
-      "[plansmith] $PROGRESS Phase 3: CRITIQUE — Review your plan. Do NOT rewrite it.
 
-Re-read the plan you just wrote. List SPECIFIC weaknesses as a numbered list.
+    # Build critique prompt based on mode (Constitutional AI vs open-ended)
+    if [[ "$CRITIQUE_MODE" == "principles" ]]; then
+      # Read critique principles from state file body
+      CRITIQUE_PRINCIPLES=$(awk '/^## Critique Principles/,0' "$STATE_FILE")
+      CRITIQUE_INSTRUCTIONS="Re-read the plan you just wrote. Evaluate it against EACH principle below.
+For each principle, state PASS or FAIL with a specific explanation.
+You MUST address at least 8 of the 12 principles explicitly.
+You MUST find at least 3 genuine FAIL items.
+
+$CRITIQUE_PRINCIPLES"
+    else
+      CRITIQUE_INSTRUCTIONS="Re-read the plan you just wrote. List SPECIFIC weaknesses as a numbered list.
 For each weakness, explain:
 - What is wrong or missing
 - Why it matters
@@ -398,13 +431,19 @@ You MUST find at least 3 genuine issues. Consider:
 4. Are there implicit assumptions that should be explicit?
 5. Is anything vague where it should be specific (file paths, function names, exact commands)?
 6. Are breaking changes identified? Migration path clear?
-7. Are effort estimates realistic?
+7. Are effort estimates realistic?"
+    fi
+
+    block_with \
+      "[plansmith] $PROGRESS Phase: CRITIQUE — Review your plan. Do NOT rewrite it.
+
+$CRITIQUE_INSTRUCTIONS
 
 DO NOT rewrite the plan. DO NOT output <promise>$COMPLETION_PROMISE</promise>. Just list the issues.
 
 Original request:
 $PROMPT_TEXT" \
-      "Phase 3: CRITIQUE | List specific weaknesses. Do NOT rewrite or finalize."
+      "Phase: CRITIQUE | List specific weaknesses. Do NOT rewrite or finalize."
     ;;
 
   critique)
@@ -456,8 +495,54 @@ $PROMPT_TEXT" \
         "Phase: CRITIQUE | Need at least 3 numbered weaknesses. Found $NUMBERED_COUNT."
     fi
 
+    # PRINCIPLE VALIDATION (Constitutional AI): check principle references in principles mode
+    if [[ "$CRITIQUE_MODE" == "principles" ]]; then
+      PRINCIPLE_REFS=$(echo "$LAST_OUTPUT" | grep -ciE '\bP[0-9]+\b' || true)
+      PASS_FAIL_REFS=$(echo "$LAST_OUTPUT" | grep -ciE '\b(PASS|FAIL)\b' || true)
+      TOTAL_PRINCIPLE_EVIDENCE=$((PRINCIPLE_REFS + PASS_FAIL_REFS))
+      if [[ "$TOTAL_PRINCIPLE_EVIDENCE" -lt 6 ]]; then
+        block_with \
+          "[plansmith] $PROGRESS Phase: CRITIQUE — Insufficient principle evaluation.
+
+Found $PRINCIPLE_REFS principle references (P1-P12) and $PASS_FAIL_REFS PASS/FAIL judgments (need 6+ total).
+$CRITIQUE_PERSPECTIVE
+
+Evaluate each principle (P1-P12) with explicit PASS or FAIL.
+You must address at least 8 principles and find at least 3 FAILs.
+
+Original request:
+$PROMPT_TEXT" \
+          "Phase: CRITIQUE | Need 6+ principle references (P1-P12 + PASS/FAIL). Found $TOTAL_PRINCIPLE_EVIDENCE."
+      fi
+    fi
+
+    # Store critique output for Reflexion memory extraction
+    echo "" >> "$STATE_FILE"
+    echo "<!-- CRITIQUE_ROUND_${CRITIQUE_NUM} -->" >> "$STATE_FILE"
+    echo "$LAST_OUTPUT" >> "$STATE_FILE"
+    echo "<!-- /CRITIQUE_ROUND_${CRITIQUE_NUM} -->" >> "$STATE_FILE"
+
     # Critique passed — advance to revise
     advance_phase
+
+    # Self-Refine: check if this revise is followed by another critique round
+    IFS=',' read -ra NEXT_CHECK <<< "$PHASES_STR"
+    # advance_phase increments in the state file but PHASE_INDEX shell var is still the old value
+    # So the revise phase is at PHASE_INDEX+1 (just advanced), and the phase AFTER revise is PHASE_INDEX+2
+    AFTER_REVISE_IDX=$((PHASE_INDEX + 2))
+    AFTER_REVISE_NAME=""
+    if [[ $AFTER_REVISE_IDX -lt ${#NEXT_CHECK[@]} ]]; then
+      AFTER_REVISE_NAME=$(echo "${NEXT_CHECK[$AFTER_REVISE_IDX]}" | xargs)
+    fi
+
+    if [[ "$AFTER_REVISE_NAME" == "critique" ]]; then
+      # Not the final revise — another critique-revise cycle follows
+      PROMISE_INSTRUCTION="Do NOT output <promise>$COMPLETION_PROMISE</promise> yet — another critique round follows."
+    else
+      # Final revise — can finalize with promise
+      PROMISE_INSTRUCTION="When the plan is thorough and all critique items are addressed, output <promise>$COMPLETION_PROMISE</promise> at the very end."
+    fi
+
     block_with \
       "[plansmith] $PROGRESS Phase: REVISE — Rewrite the plan addressing every critique item.
 
@@ -465,13 +550,13 @@ Address EVERY numbered weakness from your critique. Rewrite the complete plan wi
 
 Required sections: $REQUIRED_SECTIONS
 
-When the plan is thorough and all critique items are addressed, output <promise>$COMPLETION_PROMISE</promise> at the very end.
+$PROMISE_INSTRUCTION
 
 IMPORTANT: You are in READ-ONLY planning mode. Do NOT edit, write, or create files.
 
 Original request:
 $PROMPT_TEXT" \
-      "Phase: REVISE | Address all critique items. Output <promise>$COMPLETION_PROMISE</promise> when done."
+      "Phase: REVISE | Address all critique items."
     ;;
 
   revise|iterate)
@@ -489,9 +574,35 @@ $PROMPT_TEXT" \
     fi
 
     if [[ "$PROMISE_MATCHED" != "true" ]]; then
+      # Self-Refine: check if next phase is another critique round
+      NEXT_IDX=$((PHASE_INDEX + 1))
+      IFS=',' read -ra PHASE_CHECK <<< "$PHASES_STR"
+      NEXT_PHASE_NAME="iterate"
+      if [[ $NEXT_IDX -lt ${#PHASE_CHECK[@]} ]]; then
+        NEXT_PHASE_NAME=$(echo "${PHASE_CHECK[$NEXT_IDX]}" | xargs)
+      fi
+
       advance_phase
-      block_with \
-        "[plansmith] $PROGRESS Phase: ITERATE — Plan not yet finalized.
+
+      if [[ "$NEXT_PHASE_NAME" == "critique" ]]; then
+        # Next phase is another critique round — output revised plan without promise
+        block_with \
+          "[plansmith] $PROGRESS Phase: REVISE complete — Moving to next CRITIQUE round.
+
+Output the complete revised plan addressing all previous critique items.
+Do NOT include <promise>$COMPLETION_PROMISE</promise> yet — another critique round follows.
+
+Required sections: $REQUIRED_SECTIONS
+
+IMPORTANT: You are in READ-ONLY planning mode. Do NOT edit, write, or create files.
+
+Original request:
+$PROMPT_TEXT" \
+          "Phase: REVISE complete. Next: CRITIQUE round. Output revised plan without promise tag."
+      else
+        # No more critique rounds — iterate toward finalization
+        block_with \
+          "[plansmith] $PROGRESS Phase: ITERATE — Plan not yet finalized.
 
 Continue improving the plan:
 1. SELF-CRITIQUE: What is still weak, vague, or missing?
@@ -502,7 +613,8 @@ IMPORTANT: You are in READ-ONLY planning mode. Do NOT edit, write, or create fil
 
 Original request:
 $PROMPT_TEXT" \
-        "Phase: ITERATE | Output <promise>$COMPLETION_PROMISE</promise> when all sections are complete."
+          "Phase: ITERATE | Output <promise>$COMPLETION_PROMISE</promise> when all sections are complete."
+      fi
     fi
 
     # Promise matched — check required sections

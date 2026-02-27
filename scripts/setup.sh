@@ -21,6 +21,10 @@ BLOCK_TOOLS="true"
 REQUIRED_SECTIONS="Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
 COMPLETION_PROMISE="PLAN_OK"
 PHASES="understand,explore,alternatives,draft,critique,revise"
+PHASES_EXPLICIT="false"
+REFINE_ITERATIONS=2
+CRITIQUE_MODE="principles"
+USE_MEMORY="true"
 
 # --- Parse arguments ---
 while [[ $# -gt 0 ]]; do
@@ -40,9 +44,15 @@ OPTIONS:
   --max-iterations <n>           Alias for --max-phases
   --phases "a,b,c,d"             Custom phase sequence
                                  (default: understand,explore,alternatives,draft,critique,revise)
+  --refine-iterations <n>        Number of critique-revise cycles, 1-4 (default: 2)
+                                 Based on Self-Refine (Madaan et al., NeurIPS 2023)
   --skip-understand              Skip understand phase
   --skip-explore                 Skip explore phase
   --skip-alternatives            Skip alternatives phase
+  --open-critique                Use open-ended critique instead of principle-based
+                                 (default: principle-based, per Constitutional AI)
+  --no-memory                    Disable session memory injection (Reflexion)
+  --clear-memory                 Clear accumulated session memories
   --no-block-tools               Disable tool blocking (default: blocking ON)
   --required-sections "A,B,C"    Required sections, comma-separated
                                  (default: Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions)
@@ -87,7 +97,33 @@ HELP_EOF
         exit 1
       fi
       PHASES="$2"
+      PHASES_EXPLICIT="true"
       shift 2
+      ;;
+    --refine-iterations)
+      if [[ -z "${2:-}" ]]; then
+        echo "Error: --refine-iterations requires a number (1-4)" >&2
+        exit 1
+      fi
+      if ! [[ "$2" =~ ^[1-4]$ ]]; then
+        echo "Error: --refine-iterations must be 1-4, got: $2" >&2
+        exit 1
+      fi
+      REFINE_ITERATIONS="$2"
+      shift 2
+      ;;
+    --open-critique)
+      CRITIQUE_MODE="open"
+      shift
+      ;;
+    --no-memory)
+      USE_MEMORY="false"
+      shift
+      ;;
+    --clear-memory)
+      rm -f ".claude/plansmith-memory.local.md"
+      echo "Plansmith memory cleared."
+      shift
       ;;
     --skip-understand)
       PHASES=$(echo "$PHASES" | sed 's/understand,\?//' | sed 's/^,//')
@@ -142,6 +178,14 @@ if [[ -z "$PROMPT" ]]; then
   exit 1
 fi
 
+# Build dynamic phase sequence (Self-Refine: multiple critique-revise cycles)
+if [[ "$PHASES_EXPLICIT" != "true" ]]; then
+  PHASES="understand,explore,alternatives,draft"
+  for ((i=1; i<=REFINE_ITERATIONS; i++)); do
+    PHASES="${PHASES},critique,revise"
+  done
+fi
+
 # Ensure .claude directory exists
 mkdir -p .claude
 
@@ -167,6 +211,15 @@ if [[ -f "$TEMPLATE_FILE" ]]; then
   TEMPLATE=$(cat "$TEMPLATE_FILE")
 fi
 
+# Read critique principles template (Constitutional AI)
+CRITIQUE_TEMPLATE=""
+if [[ "$CRITIQUE_MODE" == "principles" ]]; then
+  CRITIQUE_TEMPLATE_FILE="${PLUGIN_ROOT}/templates/critique-principles.md"
+  if [[ -f "$CRITIQUE_TEMPLATE_FILE" ]]; then
+    CRITIQUE_TEMPLATE=$(cat "$CRITIQUE_TEMPLATE_FILE")
+  fi
+fi
+
 # Create state file
 cat > "$STATE_FILE" <<EOF
 ---
@@ -178,12 +231,17 @@ completion_promise: "$COMPLETION_PROMISE"
 block_tools: $BLOCK_TOOLS
 required_sections: "$REQUIRED_SECTIONS"
 phases: "$PHASES"
+refine_iterations: $REFINE_ITERATIONS
+critique_mode: "$CRITIQUE_MODE"
+use_memory: $USE_MEMORY
 started_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ---
 
 $PROMPT
 
 $TEMPLATE
+
+$CRITIQUE_TEMPLATE
 EOF
 
 # Output setup message
@@ -193,6 +251,9 @@ Plansmith activated!
   Prompt: $PROMPT
   Phases: $PHASES
   Max phase transitions: $MAX_PHASES
+  Refine iterations: $REFINE_ITERATIONS (Self-Refine)
+  Critique mode: $CRITIQUE_MODE ($(if [[ "$CRITIQUE_MODE" == "principles" ]]; then echo "Constitutional AI"; else echo "open-ended"; fi))
+  Session memory: $(if [[ "$USE_MEMORY" == "true" ]]; then echo "ON (Reflexion)"; else echo "OFF"; fi)
   Tool blocking: $(if [[ "$BLOCK_TOOLS" == "true" ]]; then echo "ON (Edit/Write/Bash blocked)"; else echo "OFF"; fi)
   Required sections: $REQUIRED_SECTIONS
   Starting phase: $FIRST_PHASE
@@ -207,8 +268,8 @@ PHASE SEQUENCE
   explore       → Read codebase, list findings (no plan yet)
   alternatives  → Compare 2-3 approaches, choose one
   draft         → Write complete plan with all required sections
-  critique      → List numbered weaknesses (no rewriting, no finalizing)
-  revise        → Address all critiques, output <promise>${COMPLETION_PROMISE}</promise>
+  critique      → Evaluate against principles / list weaknesses (×${REFINE_ITERATIONS})
+  revise        → Address critiques, output <promise>${COMPLETION_PROMISE}</promise> (×${REFINE_ITERATIONS})
 ===================================================================
 EOF
 
