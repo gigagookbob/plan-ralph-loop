@@ -1,3 +1,7 @@
+**한국어** | [English](README.md)
+
+> You're viewing the English version. [한국어 버전은 여기를 클릭하세요.](README.ko.md)
+
 # plansmith
 
 A planning-focused iterative loop plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Progresses through structured phases — explore, draft, critique, revise — with validation at each step to produce high-quality implementation plans.
