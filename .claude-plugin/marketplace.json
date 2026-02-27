@@ -4,13 +4,13 @@
     "name": "gigagookbob"
   },
   "metadata": {
-    "description": "Plansmith plugin for structured planning phases in Claude Code"
+    "description": "Research-backed structured planning for Claude Code — Self-Refine, Constitutional AI, Reflexion, Least-to-Most"
   },
   "plugins": [
     {
       "name": "plansmith",
       "source": "./",
-      "description": "Structured planning phases (explore, draft, critique, revise) with per-phase validation and tool blocking for Claude Code.",
+      "description": "Research-backed structured planning for Claude Code — multi-iteration critique-revise (Self-Refine), principle-based evaluation (Constitutional AI), session memory (Reflexion), and Least-to-Most step decomposition.",
       "version": "3.0.0",
       "author": {
         "name": "gigagookbob"
