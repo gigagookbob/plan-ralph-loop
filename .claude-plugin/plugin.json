@@ -4,5 +4,9 @@
   "description": "Structured planning phases (explore, draft, critique, revise) with per-phase validation and tool blocking for Claude Code.",
   "author": {
     "name": "gigagookbob"
-  }
+  },
+  "homepage": "https://github.com/gigagookbob/plansmith",
+  "repository": "https://github.com/gigagookbob/plansmith",
+  "license": "MIT",
+  "keywords": ["planning", "workflow", "structured", "critique", "ralph-loop"]
 }
