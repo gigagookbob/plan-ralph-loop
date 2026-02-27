@@ -4,7 +4,13 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Project Overview
 
-plansmith is a Claude Code plugin that progresses through structured planning phases (explore → draft → critique → revise) with per-phase validation. Inspired by [Ralph Loop](https://ghuntley.com/ralph/), but instead of iterating on code until tests pass, it produces a "ready-to-start" implementation plan through distinct phases.
+plansmith is a Claude Code plugin that progresses through structured planning phases with per-phase validation. Inspired by [Ralph Loop](https://ghuntley.com/ralph/), but instead of iterating on code until tests pass, it produces a "ready-to-start" implementation plan through distinct phases.
+
+**Research foundations:**
+- [Self-Refine](https://arxiv.org/abs/2303.17651) (NeurIPS 2023) — multi-iteration critique-revise (default: 2 cycles)
+- [Constitutional AI](https://arxiv.org/abs/2212.08073) (Anthropic) — principle-based structured critique (12 principles, PASS/FAIL)
+- [Reflexion](https://arxiv.org/abs/2303.11366) (NeurIPS 2023) — persistent session memory across planning runs
+- [Least-to-Most](https://arxiv.org/abs/2205.10625) (ICLR 2023) — progressive step decomposition in draft phase
 
 ## Architecture
 
@@ -19,12 +25,14 @@ Three core mechanisms:
 ```
 /plansmith:plan → setup.sh (creates state file)
   → Phase 1: understand (analyze problem, define success criteria)
-  → Phase 2: explore (read codebase, list findings)
+  → Phase 2: explore (read codebase, list findings + Reflexion memory injection)
   → Phase 3: alternatives (compare approaches, choose one)
-  → Phase 4: draft (write complete plan)
-  → Phase 5: critique (list numbered weaknesses)
-  → Phase 6: revise (address critiques, finalize)
-  → save.sh → .claude/plansmith-output.local.md
+  → Phase 4: draft (write complete plan with Least-to-Most step ordering)
+  → Phase 5: critique (principle-based P1-P12 PASS/FAIL, technical perspective)
+  → Phase 6: revise (address critiques)
+  → Phase 7: critique (round 2, maintainability perspective)
+  → Phase 8: revise (finalize with promise tag)
+  → save.sh → .claude/plansmith-output.local.md + memory extraction
 ```
 
 ### Phase Machine (stop-hook.sh)
@@ -37,10 +45,15 @@ Each phase has distinct validation:
 | explore | File paths listed, no plan headings | Plan headings found (negative validation) |
 | alternatives | 2+ options, recommendation keyword, pros/cons keyword | Missing options, recommendation, or trade-offs |
 | draft | All required section headings present | Sections missing |
-| critique | 3+ numbered items, no `<promise>` tag | Promise present (negative validation), <3 items |
-| revise | Promise tag + all sections | Promise missing or sections missing |
+| critique | 3+ numbered items, no `<promise>` tag, 6+ principle refs (principles mode) | Promise present (negative validation), <3 items, insufficient principle evaluation |
+| revise | Promise tag + all sections (final round only) | Promise missing or sections missing |
 
-Key insight: **negative validation** (checking what must NOT be in the output) prevents Claude from collapsing phases together. Critique supports **perspective rotation** for repeated critique phases.
+Key insights:
+- **Negative validation** (checking what must NOT be in the output) prevents Claude from collapsing phases together
+- **Perspective rotation** for repeated critique phases (technical → maintainability → devil's advocate)
+- **Principle-based critique** (Constitutional AI): 12 enumerable principles with PASS/FAIL evaluation
+- **Multi-iteration** (Self-Refine): critique-revise cycles repeated 2× by default (configurable 1-4)
+- **Session memory** (Reflexion): FAIL items from past sessions injected into explore phase
 
 ### State File
 
@@ -50,7 +63,10 @@ active: true
 phase: explore
 phase_index: 0
 max_phases: 10
-phases: "understand,explore,alternatives,draft,critique,revise"
+phases: "understand,explore,alternatives,draft,critique,revise,critique,revise"
+refine_iterations: 2
+critique_mode: "principles"
+use_memory: true
 completion_promise: "PLAN_OK"
 block_tools: true
 required_sections: "Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
@@ -89,6 +105,7 @@ System tools only (no npm/pip):
 | `scripts/save.sh` | Final plan saving |
 | `scripts/cancel.sh` | Loop cancellation |
 | `templates/plan-rubric.md` | Quality rubric template |
+| `templates/critique-principles.md` | 12 critique principles (Constitutional AI) |
 
 ## Known Limitations
 

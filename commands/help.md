@@ -10,15 +10,23 @@ Please explain the following to the user:
 
 A planning-focused variant of [Ralph Loop](https://ghuntley.com/ralph/). Instead of iterating on code until tests pass, it progresses through **structured phases** to produce a high-quality plan.
 
-**Phase sequence:**
+**Phase sequence** (default: 8 phases with 2 critique-revise cycles):
 1. **UNDERSTAND** — Analyze the problem. Define success criteria, constraints, assumptions.
-2. **EXPLORE** — Read the codebase, list findings. No plan writing allowed.
+2. **EXPLORE** — Read the codebase, list findings. No plan writing allowed. Session memory injected (Reflexion).
 3. **ALTERNATIVES** — Compare 2-3 approaches with pros/cons. Choose one.
-4. **DRAFT** — Write a complete plan with all required sections.
-5. **CRITIQUE** — List specific numbered weaknesses. No rewriting or finalizing.
-6. **REVISE** — Address all critiques, output `<promise>PLAN_OK</promise>` to finalize.
+4. **DRAFT** — Write a complete plan with Least-to-Most step ordering.
+5. **CRITIQUE (round 1)** — Evaluate against 12 principles (P1-P12) with PASS/FAIL. Technical perspective.
+6. **REVISE (round 1)** — Address all critique items. Do not finalize yet.
+7. **CRITIQUE (round 2)** — Re-evaluate from user/maintainability perspective.
+8. **REVISE (round 2)** — Final revision, output `<promise>PLAN_OK</promise>` to finalize.
 
 Each phase has validation that prevents skipping ahead. The final plan is saved to `.claude/plansmith-output.local.md`.
+
+**Research foundations:**
+- Self-Refine (Madaan et al., NeurIPS 2023) — multi-iteration critique-revise
+- Constitutional AI (Bai et al., Anthropic) — principle-based structured critique
+- Reflexion (Shinn et al., NeurIPS 2023) — persistent session memory
+- Least-to-Most (Zhou et al., ICLR 2023) — progressive step decomposition
 
 ## Commands
 
@@ -30,10 +38,14 @@ Start a planning loop.
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--max-phases N` | 10 | Maximum phase transitions |
+| `--refine-iterations N` | 2 | Critique-revise cycles, 1-4 (Self-Refine) |
 | `--skip-understand` | (understand ON) | Skip the understand phase |
 | `--skip-explore` | (explore ON) | Skip the explore phase |
 | `--skip-alternatives` | (alternatives ON) | Skip the alternatives phase |
-| `--phases "a,b,c"` | understand,explore,alternatives,draft,critique,revise | Custom phase sequence |
+| `--phases "a,b,c"` | (dynamic) | Custom phase sequence (overrides --refine-iterations) |
+| `--open-critique` | (principles ON) | Use open-ended critique instead of principle-based |
+| `--no-memory` | (memory ON) | Disable session memory (Reflexion) |
+| `--clear-memory` | N/A | Clear accumulated session memories |
 | `--no-block-tools` | (blocking ON) | Disable tool blocking |
 | `--required-sections "A,B,C"` | Goal,Scope,... | Required section headings |
 | `--completion-promise TEXT` | PLAN_OK | Completion promise value |
@@ -42,7 +54,8 @@ Start a planning loop.
 ```
 /plansmith:plan Design the authentication system
 /plansmith:plan Plan API refactor --skip-understand --skip-explore
-/plansmith:plan Design caching layer --max-phases 12
+/plansmith:plan Design caching layer --refine-iterations 3
+/plansmith:plan Quick plan --refine-iterations 1 --open-critique
 ```
 
 ### /plansmith:cancel
@@ -57,8 +70,8 @@ Cancel an active planning loop.
 | explore | File paths listed, no plan headings | Plan headings found, or no file references |
 | alternatives | 2+ options, recommendation keyword, pros/cons keyword, no promise/plan headings | Missing options, recommendation, or trade-off analysis |
 | draft | All required section headings present | Sections missing |
-| critique | 3+ numbered items, no `<promise>` tag | Fewer than 3 items, or promise present |
-| revise | Promise tag + all sections present | Promise missing or sections missing |
+| critique | 3+ numbered items, no `<promise>` tag, 6+ principle refs (principles mode) | Fewer than 3 items, promise present, or insufficient principle evaluation |
+| revise | Promise tag + all sections (final round only) | Promise missing or sections missing |
 
 ## Tool Blocking
 
@@ -75,3 +88,4 @@ Use `--no-block-tools` to disable.
 |------|---------|
 | `.claude/plansmith.local.md` | Loop state (phase, config) |
 | `.claude/plansmith-output.local.md` | Final approved plan |
+| `.claude/plansmith-memory.local.md` | Session memory for Reflexion (persists across sessions) |
