@@ -43,6 +43,18 @@ claude --plugin-dir /path/to/plansmith
 /plansmith:cancel
 ```
 
+Once you run `/plansmith:plan`, the loop runs automatically — no manual intervention needed. The Stop hook intercepts each response, validates it against the current phase's rules, and injects the next phase's prompt. If validation fails, Claude automatically retries with feedback.
+
+```
+/plansmith:plan ─→ explore ─→ draft ─→ critique ─→ revise ─→ saved!
+                      │          │          │          │
+                   (fail?)    (fail?)    (fail?)    (fail?)
+                      ↓          ↓          ↓          ↓
+                   retry      retry      retry      iterate
+```
+
+When complete, the final plan is saved to `.claude/plansmith-output.local.md`.
+
 ## How It Differs from Ralph Loop
 
 | | ralph-loop | plansmith |
@@ -79,9 +91,11 @@ Show detailed help.
 The **revise** phase uses a 2-phase quality gate:
 
 1. **Promise Tag**: `<promise>PLAN_OK</promise>` must be present
-2. **Required Sections**: All section headings must exist (English or Korean)
+2. **Required Sections**: All section headings must exist
 
 ### Default Required Sections
+
+Section headings are accepted in **both English and Korean** — you can write your entire plan in Korean if you prefer.
 
 | English | Korean |
 |---------|--------|
@@ -118,6 +132,25 @@ Use `--no-block-tools` to disable.
 - Tasks with no codebase to explore (use `--skip-explore`)
 - When you already have a clear plan
 
+## Output
+
+When the loop completes, the final plan is saved with `<promise>` tags stripped:
+
+```
+.claude/plansmith-output.local.md
+```
+
+The file includes YAML frontmatter with metadata:
+
+```yaml
+---
+generated_at: "2026-02-27T12:00:00Z"
+exit_reason: "completed"        # or "max_phases_reached"
+---
+```
+
+If the loop hits `--max-phases` before completion, the current output is still saved with `exit_reason: "max_phases_reached"`.
+
 ## Known Limitations
 
 - **Prompt containing `---`**: May break YAML frontmatter parsing. Avoid `---` on its own line in prompts.
@@ -138,7 +171,22 @@ Uses a separate state file (`.claude/plansmith.local.md`) from the official `ral
 
 ```bash
 git clone https://github.com/gigagookbob/plansmith.git
+```
+
+### Per-session
+
+```bash
 claude --plugin-dir /path/to/plansmith
+```
+
+### Persistent (load automatically every session)
+
+Add to `~/.claude/settings.json`:
+
+```json
+{
+  "plugins": ["/path/to/plansmith"]
+}
 ```
 
 ## License
