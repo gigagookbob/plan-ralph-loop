@@ -89,5 +89,5 @@ System tools only (no npm/pip):
 ## Known Limitations
 
 - Prompt containing `---` on its own line breaks YAML frontmatter parsing
-- Bash allowlist is conservative: `&`, `>`, `|`, `;` in arguments (e.g., `grep 'a&b'`) blocked
+- Bash allowlist allows quoted special chars (e.g., `grep 'a&b'`), but unclosed quotes or complex escape patterns may still be blocked
 - `--completion-promise` values with double quotes may break YAML parsing

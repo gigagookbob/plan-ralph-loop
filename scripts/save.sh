@@ -17,8 +17,8 @@ fi
 OUTPUT_FILE="${CWD}/.claude/plansmith-output.local.md"
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-# Strip <promise>...</promise> tags from the output
-CLEAN_PLAN=$(echo "$LAST_MSG" | sed 's/<promise>[^<]*<\/promise>//g')
+# Strip <promise>...</promise> tags from the output (multiline-safe)
+CLEAN_PLAN=$(echo "$LAST_MSG" | perl -0777 -pe 's/<promise>.*?<\/promise>//gs')
 
 cat > "$OUTPUT_FILE" <<EOF
 ---

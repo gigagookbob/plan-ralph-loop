@@ -15,6 +15,13 @@ for cmd in jq perl; do
   fi
 done
 
+# --- Helper: portable sed in-place (macOS + Linux) ---
+sed_inplace() {
+  local pattern="$1" file="$2"
+  local tmp="${file}.tmp.$$"
+  sed "$pattern" "$file" > "$tmp" && mv "$tmp" "$file"
+}
+
 # --- 1. Read hook input from stdin ---
 HOOK_INPUT=$(cat)
 
@@ -27,6 +34,12 @@ fi
 
 # --- 3. Parse YAML frontmatter ---
 FRONTMATTER=$(sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$STATE_FILE")
+
+if [[ -z "$FRONTMATTER" ]]; then
+  echo "Warning: plansmith state file has no valid YAML frontmatter. Deactivating." >&2
+  sed_inplace "s/^active: true/active: false/" "$STATE_FILE" 2>/dev/null || rm -f "$STATE_FILE"
+  exit 0
+fi
 
 ACTIVE=$(echo "$FRONTMATTER" | grep '^active:' | awk '{print $2}')
 PHASE=$(echo "$FRONTMATTER" | grep '^phase:' | sed 's/phase: *//')
@@ -49,23 +62,16 @@ fi
 
 # --- 4. Validate numeric fields ---
 if [[ ! "$PHASE_INDEX" =~ ^[0-9]+$ ]]; then
-  echo "Warning: plansmith state file corrupted (phase_index: '$PHASE_INDEX')" >&2
-  rm "$STATE_FILE"
+  echo "Warning: plansmith state file corrupted (phase_index: '$PHASE_INDEX'). Deactivating (file preserved for inspection)." >&2
+  sed_inplace "s/^active: true/active: false/" "$STATE_FILE" 2>/dev/null || true
   exit 0
 fi
 
 if [[ ! "$MAX_PHASES" =~ ^[0-9]+$ ]]; then
-  echo "Warning: plansmith state file corrupted (max_phases: '$MAX_PHASES')" >&2
-  rm "$STATE_FILE"
+  echo "Warning: plansmith state file corrupted (max_phases: '$MAX_PHASES'). Deactivating (file preserved for inspection)." >&2
+  sed_inplace "s/^active: true/active: false/" "$STATE_FILE" 2>/dev/null || true
   exit 0
 fi
-
-# --- Helper: portable sed in-place (macOS + Linux) ---
-sed_inplace() {
-  local pattern="$1" file="$2"
-  local tmp="${file}.tmp.$$"
-  sed "$pattern" "$file" > "$tmp" && mv "$tmp" "$file"
-}
 
 # --- Helper: advance to next phase ---
 advance_phase() {
@@ -127,15 +133,19 @@ if [[ -z "$LAST_OUTPUT" ]]; then
 fi
 
 if [[ -z "$LAST_OUTPUT" ]]; then
-  echo "Warning: plansmith could not extract assistant message" >&2
-  rm "$STATE_FILE"
+  echo "Warning: plansmith could not extract assistant message. Deactivating (file preserved for inspection)." >&2
+  sed_inplace "s/^active: true/active: false/" "$STATE_FILE" 2>/dev/null || true
   exit 0
 fi
 
 # Extract the original prompt (everything after closing ---)
 PROMPT_TEXT=$(awk '/^---$/{i++; next} i>=2' "$STATE_FILE")
 
-# --- 7. Phase machine ---
+# --- 7. Progress indicator ---
+TOTAL_PHASES=$(echo "$PHASES_STR" | tr ',' '\n' | wc -l | tr -d ' ')
+PROGRESS="[$((PHASE_INDEX + 1))/$TOTAL_PHASES]"
+
+# --- 8. Phase machine ---
 
 # Bilingual section heading patterns (English + Korean)
 get_section_pattern() {
@@ -158,7 +168,7 @@ case "$PHASE" in
     # NEGATIVE VALIDATION: must NOT contain plan section headings
     if echo "$LAST_OUTPUT" | grep -qiE "^#+ +(Goal|목표|Steps|단계|Scope|범위|Non-Scope|비범위|Verification|검증|Risks|리스크|Open Questions|오픈 질문)"; then
       block_with \
-        "[plansmith] Phase 1: EXPLORE — You wrote plan section headings. Do NOT write a plan yet.
+        "[plansmith] $PROGRESS Phase 1: EXPLORE — You wrote plan section headings. Do NOT write a plan yet.
 
 In this phase, you must ONLY report what you found in the codebase:
 
@@ -176,10 +186,14 @@ $PROMPT_TEXT" \
     fi
 
     # POSITIVE VALIDATION: must contain evidence of actual exploration (file paths)
-    FILE_REF_COUNT=$(echo "$LAST_OUTPUT" | grep -cE '(src/|lib/|\.ts|\.js|\.py|\.go|\.rs|\.java|\.jsx|\.tsx|package\.json|Cargo\.toml|go\.mod|requirements\.txt|\.config|\.json|\.md)' || true)
+    # Path-based detection (high confidence): patterns with directory separator
+    PATH_REF_COUNT=$(echo "$LAST_OUTPUT" | grep -cE '[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+\.[a-zA-Z]+' || true)
+    # Extension-based detection (broader): known file extensions
+    EXT_REF_COUNT=$(echo "$LAST_OUTPUT" | grep -cE '\.(ts|js|py|go|rs|java|jsx|tsx|sh|md|yaml|yml|toml|cfg|rb|c|cpp|h|hpp|css|scss|html|xml|sql|php)(\s|$|[,;:)])' || true)
+    FILE_REF_COUNT=$((PATH_REF_COUNT > EXT_REF_COUNT ? PATH_REF_COUNT : EXT_REF_COUNT))
     if [[ "$FILE_REF_COUNT" -lt 2 ]]; then
       block_with \
-        "[plansmith] Phase 1: EXPLORE — Not enough codebase exploration detected.
+        "[plansmith] $PROGRESS Phase 1: EXPLORE — Not enough codebase exploration detected.
 
 Please read actual files using Read, Glob, and Grep tools. Then list your findings:
 
@@ -197,7 +211,7 @@ $PROMPT_TEXT" \
     # Explore passed — advance to draft
     advance_phase
     block_with \
-      "[plansmith] Phase 2: DRAFT — Now write the plan.
+      "[plansmith] $PROGRESS Phase 2: DRAFT — Now write the plan.
 
 Based on your exploration findings, write a complete plan with ALL required sections:
 $REQUIRED_SECTIONS
@@ -229,7 +243,7 @@ $PROMPT_TEXT" \
       MISSING_LIST=$(printf ", %s" "${MISSING[@]}")
       MISSING_LIST=${MISSING_LIST:2}
       block_with \
-        "[plansmith] Phase 2: DRAFT — Missing sections: $MISSING_LIST
+        "[plansmith] $PROGRESS Phase 2: DRAFT — Missing sections: $MISSING_LIST
 
 Please add the missing sections and resubmit the complete plan.
 Required sections: $REQUIRED_SECTIONS
@@ -242,7 +256,7 @@ $PROMPT_TEXT" \
     # Draft passed — advance to critique
     advance_phase
     block_with \
-      "[plansmith] Phase 3: CRITIQUE — Review your plan. Do NOT rewrite it.
+      "[plansmith] $PROGRESS Phase 3: CRITIQUE — Review your plan. Do NOT rewrite it.
 
 Re-read the plan you just wrote. List SPECIFIC weaknesses as a numbered list.
 For each weakness, explain:
@@ -270,7 +284,7 @@ $PROMPT_TEXT" \
     # NEGATIVE VALIDATION: must NOT contain promise tag
     if echo "$LAST_OUTPUT" | grep -qE '<promise>'; then
       block_with \
-        "[plansmith] Phase 3: CRITIQUE — Do NOT finalize during critique.
+        "[plansmith] $PROGRESS Phase 3: CRITIQUE — Do NOT finalize during critique.
 
 You included a <promise> tag. This phase is for identifying weaknesses ONLY.
 List at least 3 specific, numbered weaknesses in the plan. No rewriting, no finalizing.
@@ -284,7 +298,7 @@ $PROMPT_TEXT" \
     NUMBERED_COUNT=$(echo "$LAST_OUTPUT" | grep -cE '^\s*[0-9]+\.' || true)
     if [[ "$NUMBERED_COUNT" -lt 3 ]]; then
       block_with \
-        "[plansmith] Phase 3: CRITIQUE — Not enough specific critiques.
+        "[plansmith] $PROGRESS Phase 3: CRITIQUE — Not enough specific critiques.
 
 Found $NUMBERED_COUNT numbered items, need at least 3.
 List specific, numbered weaknesses (e.g., '1. The step ordering is wrong because...')
@@ -300,7 +314,7 @@ $PROMPT_TEXT" \
     # Critique passed — advance to revise
     advance_phase
     block_with \
-      "[plansmith] Phase 4: REVISE — Rewrite the plan addressing every critique item.
+      "[plansmith] $PROGRESS Phase 4: REVISE — Rewrite the plan addressing every critique item.
 
 Address EVERY numbered weakness from your critique. Rewrite the complete plan with all fixes applied.
 
@@ -332,7 +346,7 @@ $PROMPT_TEXT" \
     if [[ "$PROMISE_MATCHED" != "true" ]]; then
       advance_phase
       block_with \
-        "[plansmith] Phase: ITERATE — Plan not yet finalized.
+        "[plansmith] $PROGRESS Phase: ITERATE — Plan not yet finalized.
 
 Continue improving the plan:
 1. SELF-CRITIQUE: What is still weak, vague, or missing?
@@ -362,7 +376,7 @@ $PROMPT_TEXT" \
       MISSING_LIST=${MISSING_LIST:2}
       advance_phase
       block_with \
-        "[plansmith] Quality gate: Missing sections — $MISSING_LIST
+        "[plansmith] $PROGRESS Quality gate: Missing sections — $MISSING_LIST
 
 You included <promise>$COMPLETION_PROMISE</promise> but these sections are missing:
 $MISSING_LIST

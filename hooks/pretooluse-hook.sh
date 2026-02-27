@@ -49,14 +49,21 @@ case "$TOOL_NAME" in
     COMMAND=$(echo "$HOOK_INPUT" | jq -r '.tool_input.command // empty')
 
     # Allow plugin's own scripts (setup, cancel, save-plan)
+    # Normalize path separators and strip quotes for Windows (Git Bash) compatibility
     PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
-    if [[ -n "$PLUGIN_ROOT" ]] && echo "$COMMAND" | grep -qF "$PLUGIN_ROOT/scripts/"; then
-      exit 0
+    if [[ -n "$PLUGIN_ROOT" ]]; then
+      NORM_CMD=$(echo "$COMMAND" | tr '\\' '/' | sed "s/^[\"']//" | sed "s/[\"'][[:space:]]*$//")
+      NORM_ROOT=$(echo "$PLUGIN_ROOT" | tr '\\' '/')
+      if echo "$NORM_CMD" | grep -qF "$NORM_ROOT/scripts/"; then
+        exit 0
+      fi
     fi
 
     # First: reject any compound commands, redirects, pipes, chains, subshells
     # This prevents bypass like "ls; rm -rf /", "cat foo | xargs rm", "echo x > file"
-    if echo "$COMMAND" | grep -qE '[;|&>]|\$\(|`'; then
+    # Strip quoted strings first so special chars inside quotes don't trigger blocking
+    UNQUOTED=$(echo "$COMMAND" | sed "s/\\\\['\"]//g" | sed "s/'[^']*'//g" | sed 's/"[^"]*"//g')
+    if echo "$UNQUOTED" | grep -qE '[;|&>]|\$\(|`'; then
       jq -n \
         --arg reason "[plansmith] Compound commands (pipes, chains, semicolons, redirects) are blocked during the planning phase. Use simple, single read-only commands only." \
         '{
