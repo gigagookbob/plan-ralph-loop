@@ -34,7 +34,9 @@ All criteria below must be satisfied for the plan to be considered complete.
 - Breaking changes are called out explicitly
 - Estimated effort per step (S/M/L)
 
-### Self-Critique Checklist (used in critique phase)
+### Self-Critique Checklist
+
+High-level questions for any critique mode. For principle-based critique (`--open-critique` 미사용 시), see `critique-principles.md` (P1-P12) for detailed PASS/FAIL evaluation criteria.
 
 1. Would a new developer understand this plan without additional context?
 2. Are there implicit assumptions that should be made explicit?
