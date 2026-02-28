@@ -55,7 +55,7 @@ Each phase has distinct validation:
 
 Key insights:
 - **Negative validation** (checking what must NOT be in the output) prevents Claude from collapsing phases together
-- **Perspective rotation** for repeated critique phases (technical → maintainability → devil's advocate)
+- **Perspective rotation** for repeated critique phases (technical → maintainability; devil's advocate는 3회차 이상에서만, `--refine-iterations 3+`)
 - **Principle-based critique** (Constitutional AI): 12 enumerable principles with PASS/FAIL evaluation
 - **Multi-iteration** (Self-Refine): critique-revise cycles repeated 2× by default (configurable 1-4 via `--refine-iterations`). Phase sequence built dynamically: `understand,explore,alternatives,draft` + `(critique,revise)×N`. Overridden when `--phases` is explicit.
 - **Session memory** (Reflexion): FAIL items from past sessions stored in `.claude/plansmith-memory.local.md` and injected into explore phase. Controlled by `--no-memory` / `--clear-memory`.
@@ -77,7 +77,17 @@ block_tools: true
 required_sections: "Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
 ```
 
-Frontmatter parsed with `sed`, updated with `sed_inplace()` helper (macOS + Linux compatible).
+State file은 3-layer hybrid 구조:
+
+1. **YAML frontmatter** — 설정 (위 예시). `sed`로 파싱, `sed_inplace()`로 업데이트.
+2. **Body** — 각 phase 출력이 축적됨 (understand → explore → ... 순서대로 append)
+3. **HTML comments** — critique 결과 구분자. `save.sh`가 여기서 FAIL 항목을 추출하여 Reflexion memory에 저장.
+
+```
+<!-- CRITIQUE_ROUND_1 -->
+[critique output]
+<!-- /CRITIQUE_ROUND_1 -->
+```
 
 ### Tool Blocking (pretooluse-hook.sh)
 
