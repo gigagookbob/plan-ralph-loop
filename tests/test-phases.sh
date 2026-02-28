@@ -506,6 +506,139 @@ API deprecation.
   cleanup_tmpdir
 }
 
+# --- YAML sanitization test ---
+
+test_yaml_safe() {
+  echo -e "\n${BOLD}=== YAML sanitization ===${RESET}"
+
+  # Inline the function (same as setup.sh) to avoid sourcing setup.sh side effects
+  yaml_safe() {
+    printf '%s' "$1" | tr -d '"\\\n\r'
+  }
+
+  # Test 1: double quotes stripped
+  local result
+  result=$(yaml_safe 'foo"bar')
+  if [[ "$result" == "foobar" ]]; then
+    echo -e "  ${GREEN}PASS${RESET}: Double quotes stripped"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    echo -e "  ${RED}FAIL${RESET}: Expected 'foobar', got '$result'"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+
+  # Test 2: backslashes stripped
+  result=$(yaml_safe 'foo\bar')
+  if [[ "$result" == "foobar" ]]; then
+    echo -e "  ${GREEN}PASS${RESET}: Backslashes stripped"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    echo -e "  ${RED}FAIL${RESET}: Expected 'foobar', got '$result'"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+
+  # Test 3: clean input unchanged
+  result=$(yaml_safe 'PLAN_OK')
+  if [[ "$result" == "PLAN_OK" ]]; then
+    echo -e "  ${GREEN}PASS${RESET}: Clean input unchanged"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    echo -e "  ${RED}FAIL${RESET}: Expected 'PLAN_OK', got '$result'"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+}
+
+# --- Trailing comma test ---
+
+test_trailing_comma() {
+  echo -e "\n${BOLD}=== Trailing comma handling ===${RESET}"
+
+  # Test 1: trailing comma does not inflate count
+  local count
+  count=$(echo "a,b,c," | tr ',' '\n' | grep -c '.' || true)
+  if [[ "$count" -eq 3 ]]; then
+    echo -e "  ${GREEN}PASS${RESET}: Trailing comma: count is 3 (not 4)"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    echo -e "  ${RED}FAIL${RESET}: Expected 3, got $count"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+
+  # Test 2: no trailing comma still works
+  count=$(echo "a,b,c" | tr ',' '\n' | grep -c '.' || true)
+  if [[ "$count" -eq 3 ]]; then
+    echo -e "  ${GREEN}PASS${RESET}: No trailing comma: count is 3"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    echo -e "  ${RED}FAIL${RESET}: Expected 3, got $count"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+
+  # Test 3: empty string returns 0
+  count=$(echo "" | tr ',' '\n' | grep -c '.' || true)
+  if [[ "$count" -eq 0 ]]; then
+    echo -e "  ${GREEN}PASS${RESET}: Empty string: count is 0"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    echo -e "  ${RED}FAIL${RESET}: Expected 0, got $count"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+}
+
+# --- Save failure handling test ---
+
+test_save_failure_handling() {
+  echo -e "\n${BOLD}=== save.sh failure handling ===${RESET}"
+
+  # Test: revise completes even when save.sh fails
+  setup_tmpdir
+  setup_env "revise" 7 "## Goal
+Fix authentication.
+
+## Scope
+Auth module.
+
+## Non-Scope
+User management.
+
+## Steps
+1. Fix login handler.
+
+## Verification
+Run tests.
+
+## Risks
+Breaking changes.
+
+## Open Questions
+API deprecation.
+
+<promise>PLAN_OK</promise>"
+
+  # Create a failing save.sh
+  mkdir -p "$TEST_TMPDIR/scripts"
+  cat > "$TEST_TMPDIR/scripts/save.sh" <<'MOCKEOF'
+#!/bin/bash
+exit 1
+MOCKEOF
+  chmod +x "$TEST_TMPDIR/scripts/save.sh"
+
+  CLAUDE_PLUGIN_ROOT="$TEST_TMPDIR" run_phase "revise.sh" || true
+  assert_not_blocked "Revise completes even when save.sh fails"
+
+  # Verify state was deactivated despite save failure
+  local active
+  active=$(grep '^active: ' "$TEST_TMPDIR/.claude/plansmith.local.md" | awk '{print $2}')
+  if [[ "$active" == "false" ]]; then
+    echo -e "  ${GREEN}PASS${RESET}: State deactivated despite save failure"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    echo -e "  ${RED}FAIL${RESET}: State should be false, got '$active'"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+  cleanup_tmpdir
+}
+
 # --- Perspective rotation test ---
 
 test_perspective_rotation() {
@@ -646,6 +779,9 @@ test_alternatives
 test_draft
 test_critique
 test_revise
+test_yaml_safe
+test_trailing_comma
+test_save_failure_handling
 test_perspective_rotation
 test_state_advancement
 test_dispatcher

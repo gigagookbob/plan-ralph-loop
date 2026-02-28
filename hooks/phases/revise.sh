@@ -91,7 +91,9 @@ fi
 
 # ALL CHECKS PASSED — save and deactivate
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-bash "$PLUGIN_ROOT/scripts/save.sh" "$PROJECT_DIR" "$LAST_OUTPUT" "completed"
+if ! bash "$PLUGIN_ROOT/scripts/save.sh" "$PROJECT_DIR" "$LAST_OUTPUT" "completed"; then
+  echo "Warning: plansmith failed to save plan to disk." >&2
+fi
 
 sed_inplace "s/^active: true/active: false/" "$STATE_FILE"
 

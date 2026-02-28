@@ -117,7 +117,9 @@ if [[ $MAX_PHASES -gt 0 ]] && [[ $PHASE_INDEX -ge $MAX_PHASES ]]; then
   MAX_SAVE_OUTPUT=$(echo "$HOOK_INPUT" | jq -r '.last_assistant_message // empty' 2>/dev/null || true)
   if [[ -n "$MAX_SAVE_OUTPUT" ]]; then
     PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-    bash "$PLUGIN_ROOT/scripts/save.sh" "$PROJECT_DIR" "$MAX_SAVE_OUTPUT" "max_phases_reached"
+    if ! bash "$PLUGIN_ROOT/scripts/save.sh" "$PROJECT_DIR" "$MAX_SAVE_OUTPUT" "max_phases_reached"; then
+      echo "Warning: plansmith failed to save plan to disk." >&2
+    fi
   fi
 
   sed_inplace "s/^active: true/active: false/" "$STATE_FILE"
@@ -151,7 +153,7 @@ fi
 PROMPT_TEXT=$(awk '/^---$/{i++; next} i>=2' "$STATE_FILE")
 
 # --- 7. Progress indicator ---
-TOTAL_PHASES=$(echo "$PHASES_STR" | tr ',' '\n' | wc -l | tr -d ' ')
+TOTAL_PHASES=$(echo "$PHASES_STR" | tr ',' '\n' | grep -c '.' || true)
 PROGRESS="[$((PHASE_INDEX + 1))/$TOTAL_PHASES]"
 
 # --- 8. Phase machine ---
