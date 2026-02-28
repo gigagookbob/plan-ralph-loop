@@ -38,7 +38,9 @@ Three core mechanisms:
   → save.sh → .claude/plansmith-output.local.md + memory extraction
 ```
 
-### Phase Machine (stop-hook.sh)
+### Phase Machine (stop-hook.sh + phases/)
+
+The phase machine is split into a dispatcher (`stop-hook.sh`) and per-phase validation files (`hooks/phases/*.sh`). The dispatcher handles common setup (state file parsing, frontmatter extraction, helper functions) and `source`s the appropriate phase file based on the current phase. Phase files run in the same process — all dispatcher variables and functions are available without `export`.
 
 Each phase has distinct validation:
 
@@ -102,7 +104,8 @@ System tools only (no npm/pip):
 
 | File | Role |
 |------|------|
-| `hooks/stop-hook.sh` | Phase machine + quality gate (core logic) |
+| `hooks/stop-hook.sh` | Phase machine dispatcher (common setup + `source` dispatch) |
+| `hooks/phases/*.sh` | Per-phase validation and prompt logic (sourced by stop-hook.sh) |
 | `hooks/pretooluse-hook.sh` | Tool blocking during planning |
 | `scripts/setup.sh` | CLI arg parsing + state file creation |
 | `scripts/save.sh` | Final plan saving |
