@@ -11,7 +11,7 @@
       "name": "plansmith",
       "source": "./",
       "description": "Structured planning for Claude Code — multi-iteration critique-revise (Self-Refine), principle-based evaluation (Constitutional AI), session memory (Reflexion), and Least-to-Most step decomposition.",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "author": {
         "name": "gigagookbob"
       },
