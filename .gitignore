@@ -1,6 +1,14 @@
 # Runtime state files (created during planning loops)
 .claude/plansmith.local.md
 .claude/plansmith-output.local.md
+.claude/plansmith-memory.local.md
+
+# Claude Code local files
+.claude/settings.local.json
+.claude/worktrees/
+
+# Crash dumps
+bash.exe.stackdump
 
 # Temp files from atomic updates
 *.tmp.*
