@@ -186,6 +186,9 @@ if [[ "$PHASES_EXPLICIT" != "true" ]]; then
   done
 fi
 
+# Strip leading/trailing commas (defensive)
+PHASES=$(echo "$PHASES" | sed 's/^,//; s/,$//')
+
 # Ensure .claude directory exists
 mkdir -p .claude
 
@@ -220,6 +223,16 @@ if [[ "$CRITIQUE_MODE" == "principles" ]]; then
   fi
 fi
 
+# YAML-safe: strip characters that break double-quoted YAML values.
+# Our YAML is parsed by sed (not a real parser), so escaping is impractical.
+yaml_safe() {
+  printf '%s' "$1" | tr -d '"\\\n\r'
+}
+
+SAFE_PROMISE=$(yaml_safe "$COMPLETION_PROMISE")
+SAFE_SECTIONS=$(yaml_safe "$REQUIRED_SECTIONS")
+SAFE_PHASES=$(yaml_safe "$PHASES")
+
 # Create state file
 cat > "$STATE_FILE" <<EOF
 ---
@@ -227,10 +240,10 @@ active: true
 phase: $FIRST_PHASE
 phase_index: 0
 max_phases: $MAX_PHASES
-completion_promise: "$COMPLETION_PROMISE"
+completion_promise: "$SAFE_PROMISE"
 block_tools: $BLOCK_TOOLS
-required_sections: "$REQUIRED_SECTIONS"
-phases: "$PHASES"
+required_sections: "$SAFE_SECTIONS"
+phases: "$SAFE_PHASES"
 refine_iterations: $REFINE_ITERATIONS
 critique_mode: "$CRITIQUE_MODE"
 use_memory: $USE_MEMORY

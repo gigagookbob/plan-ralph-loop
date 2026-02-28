@@ -66,6 +66,16 @@ if [[ "$EXIT_REASON" == "completed" ]] && [[ "$USE_MEMORY" == "true" ]] && [[ -f
 $FAIL_ITEMS
 MEMORY_EOF
       echo "Session learnings saved to: $MEMORY_FILE" >&2
+
+      # Cap memory file to prevent unbounded growth.
+      # Each session ≈ 5-8 lines. 100 lines ≈ 12-20 sessions.
+      # Read side (understand.sh) uses tail -30, so 100 is more than sufficient.
+      MAX_MEMORY_LINES=100
+      CURRENT_LINES=$(wc -l < "$MEMORY_FILE" | tr -d ' ')
+      if [[ "$CURRENT_LINES" -gt "$MAX_MEMORY_LINES" ]]; then
+        TRIMMED=$(tail -"$MAX_MEMORY_LINES" "$MEMORY_FILE")
+        printf '%s\n' "$TRIMMED" > "$MEMORY_FILE"
+      fi
     fi
   fi
 fi
