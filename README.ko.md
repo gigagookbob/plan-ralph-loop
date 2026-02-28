@@ -257,6 +257,21 @@ exit_reason: "completed"        # 또는 "max_phases_reached"
 
 공식 `ralph-loop` 플러그인과 별도의 상태 파일(`.claude/plansmith.local.md`)을 사용합니다. 두 플러그인을 동시에 설치할 수 있습니다.
 
+## 프로젝트 구조
+
+```
+plansmith/
+├── commands/           # 슬래시 커맨드 정의 (plan, cancel, help)
+├── hooks/
+│   ├── stop-hook.sh    # 페이즈 머신 디스패처
+│   ├── pretooluse-hook.sh  # 계획 중 도구 차단
+│   ├── lib/common.sh   # 공유 헬퍼 함수
+│   └── phases/         # 단계별 검증 (understand, explore, ...)
+├── scripts/            # 설정, 저장, 취소 스크립트
+├── templates/          # 계획 품질 루브릭 + 12개 비평 원칙
+└── tests/              # 단계 검증 단위 테스트 (36개)
+```
+
 ## 요구 사항
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
