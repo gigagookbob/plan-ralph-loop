@@ -126,15 +126,15 @@ HELP_EOF
       shift
       ;;
     --skip-understand)
-      PHASES=$(echo "$PHASES" | sed 's/understand,\?//' | sed 's/^,//')
+      PHASES=$(echo "$PHASES" | sed -E 's/understand,?//' | sed 's/^,//')
       shift
       ;;
     --skip-explore)
-      PHASES=$(echo "$PHASES" | sed 's/explore,\?//' | sed 's/^,//')
+      PHASES=$(echo "$PHASES" | sed -E 's/explore,?//' | sed 's/^,//')
       shift
       ;;
     --skip-alternatives)
-      PHASES=$(echo "$PHASES" | sed 's/alternatives,\?//' | sed 's/^,//')
+      PHASES=$(echo "$PHASES" | sed -E 's/alternatives,?//' | sed 's/^,//')
       shift
       ;;
     --no-block-tools)

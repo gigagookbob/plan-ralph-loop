@@ -20,12 +20,8 @@ for cmd in jq perl; do
   fi
 done
 
-# --- Helper: portable sed in-place (macOS + Linux) ---
-sed_inplace() {
-  local pattern="$1" file="$2"
-  local tmp="${file}.tmp.$$"
-  sed "$pattern" "$file" > "$tmp" && mv "$tmp" "$file"
-}
+# --- Load shared helper functions ---
+source "$(cd "$(dirname "$0")" && pwd)/lib/common.sh"
 
 # --- 1. Read hook input from stdin ---
 HOOK_INPUT=$(cat)
@@ -82,34 +78,6 @@ if [[ ! "$MAX_PHASES" =~ ^[0-9]+$ ]]; then
   exit 0
 fi
 
-# --- Helper: advance to next phase ---
-advance_phase() {
-  local next_index=$((PHASE_INDEX + 1))
-  IFS=',' read -ra PHASE_ARR <<< "$PHASES_STR"
-  local next_phase
-  if [[ $next_index -lt ${#PHASE_ARR[@]} ]]; then
-    next_phase=$(echo "${PHASE_ARR[$next_index]}" | xargs)
-  else
-    next_phase="iterate"
-  fi
-  sed_inplace "s/^phase: .*/phase: $next_phase/" "$STATE_FILE"
-  sed_inplace "s/^phase_index: .*/phase_index: $next_index/" "$STATE_FILE"
-}
-
-# --- Helper: block stop and inject prompt ---
-block_with() {
-  local reason="$1" system_msg="$2"
-  jq -n \
-    --arg reason "$reason" \
-    --arg msg "$system_msg" \
-    '{
-      "decision": "block",
-      "reason": $reason,
-      "systemMessage": $msg
-    }'
-  exit 0
-}
-
 # --- 5. Check max phases ---
 if [[ $MAX_PHASES -gt 0 ]] && [[ $PHASE_INDEX -ge $MAX_PHASES ]]; then
   echo "Plansmith: Max phases ($MAX_PHASES) reached." >&2
@@ -156,24 +124,7 @@ PROMPT_TEXT=$(awk '/^---$/{i++; next} i>=2' "$STATE_FILE")
 TOTAL_PHASES=$(echo "$PHASES_STR" | tr ',' '\n' | grep -c '.' || true)
 PROGRESS="[$((PHASE_INDEX + 1))/$TOTAL_PHASES]"
 
-# --- 8. Phase machine ---
-
-# Bilingual section heading patterns (English + Korean)
-get_section_pattern() {
-  local section="$1"
-  case "$section" in
-    Goal)             echo "(Goal|목표)" ;;
-    Scope)            echo "(Scope|범위)" ;;
-    Non-Scope)        echo "(Non-Scope|Non Scope|비범위)" ;;
-    Steps)            echo "(Steps|단계별 계획|단계별|단계)" ;;
-    Verification)     echo "(Verification|검증)" ;;
-    Risks)            echo "(Risks|Risk|리스크)" ;;
-    "Open Questions") echo "(Open Questions|Open Question|오픈 질문)" ;;
-    *)                echo "(${section})" ;;
-  esac
-}
-
-# --- Phase dispatch ---
+# --- 8. Phase dispatch ---
 PHASE_DIR="${CLAUDE_PLUGIN_ROOT}/hooks/phases"
 if [[ ! -d "$PHASE_DIR" ]]; then
   # Fallback for direct invocation without CLAUDE_PLUGIN_ROOT

@@ -26,8 +26,10 @@ fi
 # POSITIVE VALIDATION: must contain evidence of actual exploration (file paths)
 # Path-based detection (high confidence): patterns with directory separator
 PATH_REF_COUNT=$(echo "$LAST_OUTPUT" | grep -cE '[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+\.[a-zA-Z]+' || true)
-# Extension-based detection (broader): known file extensions
-EXT_REF_COUNT=$(echo "$LAST_OUTPUT" | grep -cE '\.(ts|js|py|go|rs|java|jsx|tsx|sh|md|yaml|yml|toml|cfg|rb|c|cpp|h|hpp|css|scss|html|xml|sql|php)(\s|$|[,;:)])' || true)
+# Extension-based detection (broader): known source file extensions
+SOURCE_EXTENSIONS=(ts js py go rs java jsx tsx sh md yaml yml toml cfg rb c cpp h hpp css scss html xml sql php)
+EXT_PATTERN=$(IFS='|'; echo "${SOURCE_EXTENSIONS[*]}")
+EXT_REF_COUNT=$(echo "$LAST_OUTPUT" | grep -cE "\.(${EXT_PATTERN})(\s|$|[,;:)])" || true)
 FILE_REF_COUNT=$((PATH_REF_COUNT > EXT_REF_COUNT ? PATH_REF_COUNT : EXT_REF_COUNT))
 if [[ "$FILE_REF_COUNT" -lt 2 ]]; then
   block_with \

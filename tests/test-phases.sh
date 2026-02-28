@@ -91,29 +91,12 @@ setup_env() {
 
 # Define shared functions that phase files expect
 define_functions() {
-  # Portable sed in-place
-  sed_inplace() {
-    local pattern="$1" file="$2"
-    local tmp="${file}.tmp.$$"
-    sed "$pattern" "$file" > "$tmp" && mv "$tmp" "$file"
-  }
+  # Load production helpers (sed_inplace, advance_phase, block_with, get_section_pattern)
+  source "$PROJECT_ROOT/hooks/lib/common.sh"
 
-  # Advance phase (modifies state file)
-  advance_phase() {
-    local next_index=$((PHASE_INDEX + 1))
-    IFS=',' read -ra PHASE_ARR <<< "$PHASES_STR"
-    local next_phase
-    if [[ $next_index -lt ${#PHASE_ARR[@]} ]]; then
-      next_phase=$(echo "${PHASE_ARR[$next_index]}" | xargs)
-    else
-      next_phase="iterate"
-    fi
-    sed_inplace "s/^phase: .*/phase: $next_phase/" "$STATE_FILE"
-    sed_inplace "s/^phase_index: .*/phase_index: $next_index/" "$STATE_FILE"
-  }
-
-  # Block with — capture output instead of exiting
-  # In test mode, we write JSON to a file and use return instead of exit
+  # Override block_with for test mode:
+  # Write JSON to file instead of stdout, so we can assert on it.
+  # exit 0 terminates the subshell (same as production).
   block_with() {
     local reason="$1" system_msg="$2"
     jq -n \
@@ -124,23 +107,7 @@ define_functions() {
         "reason": $reason,
         "systemMessage": $msg
       }' > "$TEST_TMPDIR/_block_output.json"
-    # Exit the subshell — mirrors the real block_with behavior
     exit 0
-  }
-
-  # Bilingual section heading patterns
-  get_section_pattern() {
-    local section="$1"
-    case "$section" in
-      Goal)             echo "(Goal|목표)" ;;
-      Scope)            echo "(Scope|범위)" ;;
-      Non-Scope)        echo "(Non-Scope|Non Scope|비범위)" ;;
-      Steps)            echo "(Steps|단계별 계획|단계별|단계)" ;;
-      Verification)     echo "(Verification|검증)" ;;
-      Risks)            echo "(Risks|Risk|리스크)" ;;
-      "Open Questions") echo "(Open Questions|Open Question|오픈 질문)" ;;
-      *)                echo "(${section})" ;;
-    esac
   }
 
   export -f sed_inplace advance_phase block_with get_section_pattern
@@ -752,6 +719,45 @@ test_dispatcher() {
   cleanup_tmpdir
 }
 
+# --- --skip-* phase removal tests (B-4: BSD sed compatibility) ---
+
+test_skip_phases() {
+  echo -e "\n${BOLD}=== --skip-* phase removal ===${RESET}"
+
+  local phases="understand,explore,alternatives,draft,critique,revise"
+  local result
+
+  # Test: --skip-understand removes understand
+  result=$(echo "$phases" | sed -E 's/understand,?//' | sed 's/^,//')
+  if [[ "$result" == "explore,alternatives,draft,critique,revise" ]]; then
+    echo -e "  ${GREEN}PASS${RESET}: --skip-understand removes understand"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    echo -e "  ${RED}FAIL${RESET}: Expected 'explore,alternatives,...', got '$result'"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+
+  # Test: --skip-explore removes explore
+  result=$(echo "$phases" | sed -E 's/explore,?//' | sed 's/^,//')
+  if [[ "$result" == "understand,alternatives,draft,critique,revise" ]]; then
+    echo -e "  ${GREEN}PASS${RESET}: --skip-explore removes explore"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    echo -e "  ${RED}FAIL${RESET}: Expected 'understand,alternatives,...', got '$result'"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+
+  # Test: --skip-alternatives removes alternatives
+  result=$(echo "$phases" | sed -E 's/alternatives,?//' | sed 's/^,//')
+  if [[ "$result" == "understand,explore,draft,critique,revise" ]]; then
+    echo -e "  ${GREEN}PASS${RESET}: --skip-alternatives removes alternatives"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    echo -e "  ${RED}FAIL${RESET}: Expected 'understand,explore,draft,...', got '$result'"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+}
+
 # --- Run all tests ---
 
 echo -e "${BOLD}Plansmith Phase Unit Tests${RESET}"
@@ -785,6 +791,7 @@ test_save_failure_handling
 test_perspective_rotation
 test_state_advancement
 test_dispatcher
+test_skip_phases
 
 echo -e "\n${BOLD}=== Results ===${RESET}"
 echo -e "  ${GREEN}Passed: $PASS_COUNT${RESET}"

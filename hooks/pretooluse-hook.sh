@@ -81,7 +81,19 @@ case "$TOOL_NAME" in
     fi
 
     # Then: check allowlist for single read-only commands
-    if echo "$COMMAND" | grep -qE '^\s*(ls|cat|head|tail|find|grep|rg|wc|file|stat|du|df|git\s+(log|diff|status|show|branch|remote|tag|rev-parse)|pwd|echo|which|type|env|printenv|uname|hostname|date|whoami|id|tree|less|more|sort|uniq|cut|tr|comm|diff|cmp|md5sum|sha256sum|readlink|realpath|basename|dirname|test|\[|jq)(\s|$)'; then
+    READONLY_COMMANDS=(
+      ls cat head tail find grep rg wc file stat du df
+      pwd echo which type env printenv uname hostname date
+      whoami id tree less more sort uniq cut tr comm diff
+      cmp md5sum sha256sum readlink realpath basename dirname
+      test '\[' jq
+    )
+    GIT_SUBCOMMANDS=(log diff status show branch remote tag rev-parse)
+
+    CMD_PATTERN=$(IFS='|'; echo "${READONLY_COMMANDS[*]}")
+    GIT_PATTERN=$(IFS='|'; echo "${GIT_SUBCOMMANDS[*]}")
+
+    if echo "$COMMAND" | grep -qE "^\s*(${CMD_PATTERN}|git\s+(${GIT_PATTERN}))(\s|$)"; then
       exit 0
     fi
 
