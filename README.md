@@ -12,13 +12,13 @@ Working with Claude Code on complex tasks, there's a common pattern: jump straig
 
 In my experience, asking the AI to "review your plan again" does surface issues — missing edge cases, wrong step ordering, overlooked dependencies. The problem is that **these issues keep coming up no matter how many times you ask**. Each review pass catches some problems but introduces or misses others. A single prompt that says "plan and critique and revise" tends to produce a plan that *looks* thorough but hasn't actually been stress-tested.
 
-Research backs this up. [Self-Refine](https://arxiv.org/abs/2303.17651) (NeurIPS 2023) showed that an explicit generate → feedback → refine loop improves output by ~20% over single-shot generation — but only when each step has a distinct role. [Prompt repetition](https://arxiv.org/abs/2512.14982) can help marginally, but structured role separation is what drives real quality gains. More recently, [LLMs Can Plan Only If We Tell Them](https://arxiv.org/abs/2501.13545) (ICLR 2025) demonstrated that LLMs possess latent planning capabilities but need structured prompting to activate them — they don't plan well on their own, but they *can* plan well when given the right framework.
+This matches what [Self-Refine](https://arxiv.org/abs/2303.17651) (NeurIPS 2023) found: an explicit generate → feedback → refine loop improves output by ~20% over single-shot generation — but only when each step has a distinct role. [Prompt repetition](https://arxiv.org/abs/2512.14982) can help marginally, but role separation is what actually matters. [LLMs Can Plan Only If We Tell Them](https://arxiv.org/abs/2501.13545) (ICLR 2025) showed the same thing from a different angle — LLMs can plan well, but only when you tell them *how* to plan.
 
-The solution: **force fundamentally different work at each stage.** Explore the code before planning. Draft before critiquing. Critique before revising. Each phase has **negative validation** — the explore phase rejects plan headings, the critique phase rejects finalization attempts. This makes it structurally impossible to collapse everything into one pass. This approach also aligns with [test-time compute scaling](https://arxiv.org/abs/2408.03314) (ICLR 2025 Oral) — spending more inference compute through structured phases can be more effective than using a larger model.
+The fix: **force different work at each stage.** Explore the code before planning. Draft before critiquing. Critique before revising. Each phase has **negative validation** — the explore phase rejects plan headings, the critique phase rejects finalization attempts. You can't collapse everything into one pass. This is also a form of [test-time compute scaling](https://arxiv.org/abs/2408.03314) (ICLR 2025 Oral) — more structured inference beats a bigger model.
 
 ### Research Foundations
 
-Plansmith's phase architecture is grounded in peer-reviewed research:
+Based on these papers:
 
 | Technique | Paper | How it's applied |
 |-----------|-------|-----------------|
@@ -47,7 +47,7 @@ Default flow: 8 phases with 2 critique-revise cycles.
 | **Critique (×2)** | Evaluates plan against 12 principles (P1-P12) with PASS/FAIL. Perspective rotates per round: technical → maintainability. | Must NOT contain `<promise>` tag. 3+ numbered items, 6+ principle references. |
 | **Revise (×2)** | Rewrites plan addressing every critique item | Promise tag + all sections = done (final round only) |
 
-Each phase produces genuinely different output because the validation prevents collapsing phases together.
+Each phase produces different output because the validation prevents collapsing phases together.
 
 ```
 /plansmith:plan ─→ understand ─→ explore ─→ alternatives ─→ draft ─→ critique ─→ revise ─→ critique ─→ revise ─→ saved!
@@ -91,6 +91,71 @@ Once you run `/plansmith:plan`, the loop runs automatically — no manual interv
 | **Iteration** | Until tests pass | Configurable critique-revise cycles (Self-Refine) |
 | **Memory** | None | Session memory across runs (Reflexion) |
 | **Output** | Modified files | Saved plan file (`.claude/plansmith-output.local.md`) |
+
+## Plansmith vs Plan Mode — Real-World Comparison
+
+Same task — *"Implement offline mode with local card data caching, offline deck editing, and background sync"* — on a real Flutter/Supabase project ([Grandline](https://github.com/gigagookbob/grandline)). One run with Plansmith, one with Claude Code's built-in plan mode.
+
+### At a Glance
+
+| | Plansmith v3.0.0 | Plan Mode |
+|---|-----------------|-----------|
+| **Time** | ~24 min | ~5 min |
+| **Output** | 727 lines | 331 lines |
+| **Self-critique rounds** | 2 rounds (5 FAILs → fix → 2 FAILs → fix) | 0 |
+| **Issues caught before coding** | 7 | 0 |
+
+### The Critical Difference: Technology Choice
+
+| | Plansmith | Plan Mode |
+|---|-----------|-----------|
+| **Local DB** | **sqflite** (raw SQL) | **drift** (ORM + codegen) |
+| **Reasoning** | Explored 3 options (sqflite, drift, Hive). Rejected drift because project's CLAUDE.md says "codegen not used — analyzer_plugin compatibility issues." drift uses analyzer_plugin. | "Fits existing build_runner pipeline" |
+| **Project policy compliance** | Yes | **No — violates stated policy** |
+
+In practice, this would mean hitting an analyzer_plugin conflict mid-implementation, then rolling back to re-plan with a different DB. The alternatives phase caught it before any code was written.
+
+### What Self-Critique Found
+
+The two critique-revise rounds found 7 issues that plan mode missed entirely:
+
+1. **Step ordering bug**: A freezed field addition was placed after the step that needed it
+2. **Offline userId problem**: No strategy for getting userId when Supabase session might be expired
+3. **Provider recreation storm**: `ref.watch(isOnlineProvider)` would recreate the repository on every network change
+4. **SQLite boolean mismatch**: INTEGER(0/1) vs Dart bool — no conversion helper planned
+5. **Duplicate sync triggers**: Rapid network toggles would fire multiple concurrent syncs
+6. **Partial failure gap**: Server deck creation succeeds but card upload fails → orphaned empty deck
+7. **toJson key mapping**: Unverified assumption that Freezed's toJson() keys match SQLite column names
+
+### Plan Quality Comparison
+
+| Criterion | Plansmith | Plan Mode |
+|-----------|-----------|-----------|
+| **Effort estimates** | Every step with line counts (e.g., "Step 5 [L — 10 filter conditions + 5 methods, ~280 lines]") | None |
+| **Step dependencies** | Explicit (e.g., "Depends on: Step 2, Step 3") | Implicit (phase ordering only) |
+| **Edge cases** | 3+ per component (DB corruption, disk full, captive portal WiFi, FK conflicts...) | Minimal |
+| **Breaking changes** | Per-step analysis with affected call sites | Brief mentions |
+| **Error handling** | `_withFallback<T>` pattern, transaction rollback, sync failure isolation, debounce + guard | retry count (max 3) |
+| **Test plan** | 3 unit test files + setUp code + 8 test cases + mocktail + manual scenarios + curl commands | 5 manual scenarios |
+| **Risk analysis** | 8 risks with severity + mitigation | None |
+
+### Where Plan Mode Wins
+
+- **5x faster** (~5 min vs ~24 min)
+- **SyncQueue table**: Separate queue table for sync operations — more flexible than Plansmith's sync_status field approach
+- **Cleaner structure**: `lib/core/offline/` directory groups all offline code together
+
+### When to Use Which
+
+| Situation | Recommendation |
+|-----------|---------------|
+| Complex architecture changes, strict project constraints, high cost of mistakes | **Plansmith** |
+| Quick prototyping, simple features, exploratory work | **Plan Mode** |
+| Team projects where the plan needs to be reviewed by others | **Plansmith** (self-documented quality) |
+
+### Cost Considerations
+
+Plansmith uses significantly more tokens than single-shot planning — the 8-phase loop with validation retries generates 10-20+ API round-trips per session. In the test above, ~24 minutes vs ~5 minutes for plan mode. Worth it for complex tasks; overkill for simple ones.
 
 ## Commands
 
