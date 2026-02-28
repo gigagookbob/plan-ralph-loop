@@ -1,0 +1,116 @@
+# Phase: CRITIQUE
+# Validates critique output with perspective rotation and principle evaluation.
+# Stores critique data for Reflexion memory extraction. Advances to REVISE on pass.
+# Sourced by stop-hook.sh — do not execute directly.
+# shellcheck disable=SC2154
+
+# --- Perspective rotation for repeated critique phases ---
+# CRITIQUE_NUM counts how many times "critique" appears in phases[0..PHASE_INDEX].
+# PHASE_INDEX is the value BEFORE advance_phase() is called (advance happens after validation).
+# Example: phases="...,draft(3),critique(4),revise(5),critique(6),..."
+#   At PHASE_INDEX=4: head -n 5 -> counts 1 critique (first round)
+#   At PHASE_INDEX=6: head -n 7 -> counts 2 critiques (second round)
+CRITIQUE_NUM=$(echo "$PHASES_STR" | tr ',' '\n' | head -n $((PHASE_INDEX + 1)) | grep -c '^critique$' || echo 0)
+
+case "$CRITIQUE_NUM" in
+  1) CRITIQUE_PERSPECTIVE="Critique from a TECHNICAL perspective: implementation correctness, edge cases, dependency ordering, error handling, performance implications." ;;
+  2) CRITIQUE_PERSPECTIVE="Critique from a USER/MAINTAINABILITY perspective: Would a new developer understand this? Is documentation sufficient? What is the long-term maintenance cost?" ;;
+  *) CRITIQUE_PERSPECTIVE="Critique as DEVIL'S ADVOCATE: What scenarios would make this plan fail? What are the most optimistic assumptions? What hidden complexity exists?" ;;
+esac
+
+# NEGATIVE VALIDATION: must NOT contain promise tag
+if echo "$LAST_OUTPUT" | grep -qE '<promise>'; then
+  block_with \
+    "[plansmith] $PROGRESS Phase: CRITIQUE — Do NOT finalize during critique.
+
+You included a <promise> tag. This phase is for identifying weaknesses ONLY.
+$CRITIQUE_PERSPECTIVE
+
+List at least 3 specific, numbered weaknesses in the plan. No rewriting, no finalizing.
+
+Original request:
+$PROMPT_TEXT" \
+    "Phase: CRITIQUE | Remove the promise tag. List weaknesses only."
+fi
+
+# POSITIVE VALIDATION: must contain at least 3 numbered items
+NUMBERED_COUNT=$(echo "$LAST_OUTPUT" | grep -cE '^\s*[0-9]+\.' || true)
+if [[ "$NUMBERED_COUNT" -lt 3 ]]; then
+  block_with \
+    "[plansmith] $PROGRESS Phase: CRITIQUE — Not enough specific critiques.
+
+Found $NUMBERED_COUNT numbered items, need at least 3.
+$CRITIQUE_PERSPECTIVE
+
+List specific, numbered weaknesses (e.g., '1. The step ordering is wrong because...')
+
+Consider: step ordering, edge cases, verification runnability, implicit assumptions,
+vague language, breaking changes, effort estimates.
+
+Original request:
+$PROMPT_TEXT" \
+    "Phase: CRITIQUE | Need at least 3 numbered weaknesses. Found $NUMBERED_COUNT."
+fi
+
+# PRINCIPLE VALIDATION (Constitutional AI): check principle references in principles mode
+if [[ "$CRITIQUE_MODE" == "principles" ]]; then
+  PRINCIPLE_REFS=$(echo "$LAST_OUTPUT" | grep -ciE '\bP[0-9]+\b' || true)
+  PASS_FAIL_REFS=$(echo "$LAST_OUTPUT" | grep -ciE '\b(PASS|FAIL)\b' || true)
+  TOTAL_PRINCIPLE_EVIDENCE=$((PRINCIPLE_REFS + PASS_FAIL_REFS))
+  if [[ "$TOTAL_PRINCIPLE_EVIDENCE" -lt 6 ]]; then
+    block_with \
+      "[plansmith] $PROGRESS Phase: CRITIQUE — Insufficient principle evaluation.
+
+Found $PRINCIPLE_REFS principle references (P1-P12) and $PASS_FAIL_REFS PASS/FAIL judgments (need 6+ total).
+$CRITIQUE_PERSPECTIVE
+
+Evaluate each principle (P1-P12) with explicit PASS or FAIL.
+You must address at least 8 principles and find at least 3 FAILs.
+
+Original request:
+$PROMPT_TEXT" \
+      "Phase: CRITIQUE | Need 6+ principle references (P1-P12 + PASS/FAIL). Found $TOTAL_PRINCIPLE_EVIDENCE."
+  fi
+fi
+
+# Store critique output for Reflexion memory extraction
+echo "" >> "$STATE_FILE"
+echo "<!-- CRITIQUE_ROUND_${CRITIQUE_NUM} -->" >> "$STATE_FILE"
+echo "$LAST_OUTPUT" >> "$STATE_FILE"
+echo "<!-- /CRITIQUE_ROUND_${CRITIQUE_NUM} -->" >> "$STATE_FILE"
+
+# Critique passed — advance to revise
+advance_phase
+
+# Self-Refine: check if this revise is followed by another critique round
+IFS=',' read -ra NEXT_CHECK <<< "$PHASES_STR"
+# advance_phase increments in the state file but PHASE_INDEX shell var is still the old value
+# So the revise phase is at PHASE_INDEX+1 (just advanced), and the phase AFTER revise is PHASE_INDEX+2
+AFTER_REVISE_IDX=$((PHASE_INDEX + 2))
+AFTER_REVISE_NAME=""
+if [[ $AFTER_REVISE_IDX -lt ${#NEXT_CHECK[@]} ]]; then
+  AFTER_REVISE_NAME=$(echo "${NEXT_CHECK[$AFTER_REVISE_IDX]}" | xargs)
+fi
+
+if [[ "$AFTER_REVISE_NAME" == "critique" ]]; then
+  # Not the final revise — another critique-revise cycle follows
+  PROMISE_INSTRUCTION="Do NOT output <promise>$COMPLETION_PROMISE</promise> yet — another critique round follows."
+else
+  # Final revise — can finalize with promise
+  PROMISE_INSTRUCTION="When the plan is thorough and all critique items are addressed, output <promise>$COMPLETION_PROMISE</promise> at the very end."
+fi
+
+block_with \
+  "[plansmith] $PROGRESS Phase: REVISE — Rewrite the plan addressing every critique item.
+
+Address EVERY numbered weakness from your critique. Rewrite the complete plan with all fixes applied.
+
+Required sections: $REQUIRED_SECTIONS
+
+$PROMISE_INSTRUCTION
+
+IMPORTANT: You are in READ-ONLY planning mode. Do NOT edit, write, or create files.
+
+Original request:
+$PROMPT_TEXT" \
+  "Phase: REVISE | Address all critique items."
