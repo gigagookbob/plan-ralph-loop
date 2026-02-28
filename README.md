@@ -2,7 +2,7 @@
 
 # plansmith
 
-A research-backed planning plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Progresses through structured phases — understand, explore, alternatives, draft, critique, revise — with validation at each step to produce high-quality implementation plans. Default: 8 phases with 2 critique-revise cycles.
+A structured planning plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Progresses through phases — understand, explore, alternatives, draft, critique, revise — with validation at each step to produce high-quality implementation plans. Default: 8 phases with 2 critique-revise cycles.
 
 Based on the [Ralph Loop](https://ghuntley.com/ralph/) technique — but instead of iterating on code until tests pass, it progresses through **distinct planning phases** until a quality gate is satisfied.
 
@@ -16,9 +16,7 @@ This matches what [Self-Refine](https://arxiv.org/abs/2303.17651) (NeurIPS 2023)
 
 The fix: **force different work at each stage.** Explore the code before planning. Draft before critiquing. Critique before revising. Each phase has **negative validation** — the explore phase rejects plan headings, the critique phase rejects finalization attempts. You can't collapse everything into one pass. This is also a form of [test-time compute scaling](https://arxiv.org/abs/2408.03314) (ICLR 2025 Oral) — more structured inference beats a bigger model.
 
-### Research Foundations
-
-Based on these papers:
+### Ideas Borrowed From
 
 | Technique | Paper | How it's applied |
 |-----------|-------|-----------------|

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 plansmith is a Claude Code plugin that progresses through structured planning phases with per-phase validation. Inspired by [Ralph Loop](https://ghuntley.com/ralph/), but instead of iterating on code until tests pass, it produces a "ready-to-start" implementation plan through distinct phases.
 
-**Research foundations:**
+**Ideas borrowed from:**
 - [Self-Refine](https://arxiv.org/abs/2303.17651) (NeurIPS 2023) — multi-iteration critique-revise (default: 2 cycles)
 - [Constitutional AI](https://arxiv.org/abs/2212.08073) (Anthropic) — principle-based structured critique (12 principles, PASS/FAIL)
 - [Reflexion](https://arxiv.org/abs/2303.11366) (NeurIPS 2023) — persistent session memory across planning runs

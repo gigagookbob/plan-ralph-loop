@@ -22,7 +22,7 @@ A planning-focused variant of [Ralph Loop](https://ghuntley.com/ralph/). Instead
 
 Each phase has validation that prevents skipping ahead. The final plan is saved to `.claude/plansmith-output.local.md`.
 
-**Research foundations:**
+**Ideas borrowed from:**
 - Self-Refine (Madaan et al., NeurIPS 2023) — multi-iteration critique-revise
 - Constitutional AI (Bai et al., Anthropic) — principle-based structured critique
 - Reflexion (Shinn et al., NeurIPS 2023) — persistent session memory
