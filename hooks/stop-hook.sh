@@ -5,6 +5,11 @@
 # Implements a phase machine: explore → draft → critique → revise → iterate
 # Each phase has distinct validation and prompts.
 
+# Prevent bash.exe.stackdump on MSYS2/Git Bash (Windows)
+# Virtual CWD (/dev) has no Windows handle → skips stackdump on signal kill
+PROJECT_DIR=$(pwd)
+cd /dev 2>/dev/null || true
+
 set -euo pipefail
 
 # --- 0. Dependency check ---
@@ -26,7 +31,7 @@ sed_inplace() {
 HOOK_INPUT=$(cat)
 
 # --- 2. Check if planning loop is active ---
-STATE_FILE=".claude/plansmith.local.md"
+STATE_FILE="$PROJECT_DIR/.claude/plansmith.local.md"
 
 if [[ ! -f "$STATE_FILE" ]]; then
   exit 0
@@ -112,7 +117,7 @@ if [[ $MAX_PHASES -gt 0 ]] && [[ $PHASE_INDEX -ge $MAX_PHASES ]]; then
   MAX_SAVE_OUTPUT=$(echo "$HOOK_INPUT" | jq -r '.last_assistant_message // empty' 2>/dev/null || true)
   if [[ -n "$MAX_SAVE_OUTPUT" ]]; then
     PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-    bash "$PLUGIN_ROOT/scripts/save.sh" "." "$MAX_SAVE_OUTPUT" "max_phases_reached"
+    bash "$PLUGIN_ROOT/scripts/save.sh" "$PROJECT_DIR" "$MAX_SAVE_OUTPUT" "max_phases_reached"
   fi
 
   sed_inplace "s/^active: true/active: false/" "$STATE_FILE"
@@ -216,8 +221,8 @@ $PROMPT_TEXT" \
 
     # Reflexion: inject session memory if available
     MEMORY_INJECT=""
-    if [[ "$USE_MEMORY" == "true" ]] && [[ -f ".claude/plansmith-memory.local.md" ]]; then
-      MEMORY_CONTEXT=$(tail -30 ".claude/plansmith-memory.local.md")
+    if [[ "$USE_MEMORY" == "true" ]] && [[ -f "$PROJECT_DIR/.claude/plansmith-memory.local.md" ]]; then
+      MEMORY_CONTEXT=$(tail -30 "$PROJECT_DIR/.claude/plansmith-memory.local.md")
       if [[ -n "$MEMORY_CONTEXT" ]]; then
         MEMORY_INJECT="
 
@@ -647,7 +652,7 @@ $PROMPT_TEXT" \
 
     # ALL CHECKS PASSED — save and deactivate
     PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-    bash "$PLUGIN_ROOT/scripts/save.sh" "." "$LAST_OUTPUT" "completed"
+    bash "$PLUGIN_ROOT/scripts/save.sh" "$PROJECT_DIR" "$LAST_OUTPUT" "completed"
 
     sed_inplace "s/^active: true/active: false/" "$STATE_FILE"
 
