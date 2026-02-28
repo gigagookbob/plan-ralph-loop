@@ -3,6 +3,10 @@
 # Plansmith PreToolUse Hook
 # Blocks file-modifying tools during the planning phase.
 
+# Prevent bash.exe.stackdump on MSYS2/Git Bash (Windows)
+PROJECT_DIR=$(pwd)
+cd /dev 2>/dev/null || true
+
 set -euo pipefail
 
 # --- 0. Dependency check ---
@@ -15,7 +19,7 @@ HOOK_INPUT=$(cat)
 TOOL_NAME=$(echo "$HOOK_INPUT" | jq -r '.tool_name')
 
 # --- 2. Check if planning loop is active with tool blocking ---
-STATE_FILE=".claude/plansmith.local.md"
+STATE_FILE="$PROJECT_DIR/.claude/plansmith.local.md"
 
 if [[ ! -f "$STATE_FILE" ]]; then
   exit 0
