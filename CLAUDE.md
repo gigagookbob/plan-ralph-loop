@@ -115,6 +115,7 @@ System tools only (no npm/pip):
 | File | Role |
 |------|------|
 | `hooks/stop-hook.sh` | Phase machine dispatcher (common setup + `source` dispatch) |
+| `hooks/lib/common.sh` | Shared helpers (sed_inplace, advance_phase, block_with, get_section_pattern) |
 | `hooks/phases/*.sh` | Per-phase validation and prompt logic (sourced by stop-hook.sh) |
 | `hooks/pretooluse-hook.sh` | Tool blocking during planning |
 | `scripts/setup.sh` | CLI arg parsing + state file creation |

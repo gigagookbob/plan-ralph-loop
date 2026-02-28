@@ -258,6 +258,21 @@ If the loop hits `--max-phases` before completion, the current output is still s
 
 Uses a separate state file (`.claude/plansmith.local.md`) from the official `ralph-loop` plugin. Both can be installed simultaneously.
 
+## Project Structure
+
+```
+plansmith/
+├── commands/           # Slash command definitions (plan, cancel, help)
+├── hooks/
+│   ├── stop-hook.sh    # Phase machine dispatcher
+│   ├── pretooluse-hook.sh  # Tool blocking during planning
+│   ├── lib/common.sh   # Shared helper functions
+│   └── phases/         # Per-phase validation (understand, explore, ...)
+├── scripts/            # Setup, save, cancel scripts
+├── templates/          # Plan rubric + 12 critique principles
+└── tests/              # Phase validation unit tests (36 cases)
+```
+
 ## Requirements
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
