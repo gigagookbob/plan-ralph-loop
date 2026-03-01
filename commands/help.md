@@ -67,7 +67,7 @@ Cancel an active planning loop.
 | Phase | Passes when... | Fails when... |
 |-------|----------------|---------------|
 | understand | 3+ numbered items, 2+ understanding keywords, no plan headings | Plan headings found, or insufficient analysis |
-| explore | File paths listed, no plan headings | Plan headings found, or no file references |
+| explore | 2+ file path references, no plan headings | Plan headings found, or no file references |
 | alternatives | 2+ options, recommendation keyword, pros/cons keyword, no promise/plan headings | Missing options, recommendation, or trade-off analysis |
 | draft | All required section headings present | Sections missing |
 | critique | 3+ numbered items, no `<promise>` tag, 6+ principle refs (principles mode) | Fewer than 3 items, promise present, or insufficient principle evaluation |

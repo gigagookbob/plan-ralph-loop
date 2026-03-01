@@ -18,14 +18,14 @@ if [[ ${#MISSING[@]} -gt 0 ]]; then
   MISSING_LIST=$(printf ", %s" "${MISSING[@]}")
   MISSING_LIST=${MISSING_LIST:2}
   block_with \
-    "[plansmith] $PROGRESS Phase 2: DRAFT — Missing sections: $MISSING_LIST
+    "[plansmith] $PROGRESS Phase: DRAFT — Missing sections: $MISSING_LIST
 
 Please add the missing sections and resubmit the complete plan.
 Required sections: $REQUIRED_SECTIONS
 
 Original request:
 $PROMPT_TEXT" \
-    "Phase 2: DRAFT | Missing sections: $MISSING_LIST"
+    "Phase: DRAFT | Missing sections: $MISSING_LIST"
 fi
 
 # Draft passed — advance to critique
