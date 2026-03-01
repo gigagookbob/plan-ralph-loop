@@ -88,7 +88,7 @@ HELP_EOF
         exit 1
       fi
       if ! [[ "$2" =~ ^[0-9]+$ ]]; then
-        echo "Error: $1 must be a positive integer, got: $2" >&2
+        echo "Error: $1 must be a non-negative integer (0 = unlimited), got: $2" >&2
         exit 1
       fi
       MAX_PHASES="$2"
@@ -202,6 +202,12 @@ fi
 
 # Strip leading/trailing commas (defensive)
 PHASES=$(echo "$PHASES" | sed 's/,,*/,/g; s/^,//; s/,$//')
+
+# Validate phases is not empty
+if [[ -z "$PHASES" ]]; then
+  echo "Error: Phase list is empty after processing. At least one phase is required." >&2
+  exit 1
+fi
 
 # Ensure .claude directory exists
 mkdir -p .claude
