@@ -47,7 +47,7 @@ Each phase has distinct validation:
 | Phase | Passes when | Fails when |
 |-------|-------------|------------|
 | understand | 3+ numbered items, 2+ understanding keywords, no plan headings | Plan headings found, insufficient analysis |
-| explore | File paths listed, no plan headings | Plan headings found (negative validation) |
+| explore | 2+ file path references, no plan headings | Plan headings found (negative validation) |
 | alternatives | 2+ options, recommendation keyword, pros/cons keyword | Missing options, recommendation, or trade-offs |
 | draft | All required section headings present | Sections missing |
 | critique | 3+ numbered items, no `<promise>` tag, 6+ principle refs (principles mode) | Promise present (negative validation), <3 items, insufficient principle evaluation |

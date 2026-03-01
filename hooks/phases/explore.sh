@@ -6,7 +6,7 @@
 # NEGATIVE VALIDATION: must NOT contain plan section headings
 if echo "$LAST_OUTPUT" | grep -qiE "^#+ +(Goal|목표|Steps|단계|Scope|범위|Non-Scope|비범위|Verification|검증|Risks|리스크|Open Questions|오픈 질문)"; then
   block_with \
-    "[plansmith] $PROGRESS Phase 1: EXPLORE — You wrote plan section headings. Do NOT write a plan yet.
+    "[plansmith] $PROGRESS Phase: EXPLORE — You wrote plan section headings. Do NOT write a plan yet.
 
 In this phase, you must ONLY report what you found in the codebase:
 
@@ -20,7 +20,7 @@ Do NOT include headings like ## Goal, ## Steps, ## Scope, etc.
 
 Original request:
 $PROMPT_TEXT" \
-    "Phase 1: EXPLORE | Do NOT write a plan yet. List your codebase findings only."
+    "Phase: EXPLORE | Do NOT write a plan yet. List your codebase findings only."
 fi
 
 # POSITIVE VALIDATION: must contain evidence of actual exploration (file paths)
@@ -33,7 +33,7 @@ EXT_REF_COUNT=$(echo "$LAST_OUTPUT" | grep -cE "\.(${EXT_PATTERN})(\s|$|[,;:)])"
 FILE_REF_COUNT=$((PATH_REF_COUNT > EXT_REF_COUNT ? PATH_REF_COUNT : EXT_REF_COUNT))
 if [[ "$FILE_REF_COUNT" -lt 2 ]]; then
   block_with \
-    "[plansmith] $PROGRESS Phase 1: EXPLORE — Not enough codebase exploration detected.
+    "[plansmith] $PROGRESS Phase: EXPLORE — Not enough codebase exploration detected.
 
 Please read actual files using Read, Glob, and Grep tools. Then list your findings:
 
@@ -45,7 +45,7 @@ Please read actual files using Read, Glob, and Grep tools. Then list your findin
 
 Original request:
 $PROMPT_TEXT" \
-    "Phase 1: EXPLORE | Read actual files and report findings. No plan yet."
+    "Phase: EXPLORE | Read actual files and report findings. No plan yet."
 fi
 
 # Explore passed — advance to alternatives
