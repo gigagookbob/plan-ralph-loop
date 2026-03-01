@@ -79,7 +79,7 @@ Cancel an active planning loop.
 By default, the following tools are blocked during planning:
 - **Edit, Write, NotebookEdit**: Always blocked
 - **Bash**: Read-only single commands only (no pipes, semicolons, redirects)
-- **Read, Glob, Grep, WebSearch, WebFetch, Task**: Always allowed
+- **Read, Glob, Grep, WebSearch, WebFetch, Task, etc.**: Always allowed (all non-listed tools)
 
 Use `--no-block-tools` to disable.
 

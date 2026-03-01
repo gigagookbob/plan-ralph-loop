@@ -212,7 +212,7 @@ Plansmith는 토큰을 많이 씁니다 — 8단계 루프 + 검증 재시도로
 |------|------|
 | **Edit, Write, NotebookEdit** | 항상 차단 |
 | **Bash** | 읽기 전용 단일 명령만 허용. 파이프, 세미콜론, 리다이렉트 차단. |
-| **Read, Glob, Grep, WebSearch, WebFetch, Task** | 항상 허용 |
+| **Read, Glob, Grep, WebSearch, WebFetch, Task 등** | 항상 허용 (나열되지 않은 모든 도구) |
 
 `--no-block-tools`로 비활성화할 수 있습니다.
 
@@ -272,7 +272,7 @@ plansmith/
 │   └── phases/         # 단계별 검증 (understand, explore, ...)
 ├── scripts/            # 설정, 저장, 취소 스크립트
 ├── templates/          # 계획 품질 루브릭 + 12개 비평 원칙
-└── tests/              # 단계 검증 테스트 (36 단위 + 32 통합)
+└── tests/              # 단계 검증 테스트 (39 단위 + 35 통합)
 ```
 
 ## 요구 사항

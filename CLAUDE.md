@@ -95,7 +95,7 @@ State file은 3-layer hybrid 구조:
 
 - Edit/Write/NotebookEdit: always blocked
 - Bash: read-only allowlist. Pipes/semicolons/redirects blocked. Plugin's own scripts exempted.
-- Read/Glob/Grep/WebSearch/WebFetch/Task: always allowed
+- Read/Glob/Grep/WebSearch/WebFetch/Task/etc.: always allowed (all non-listed tools pass through)
 
 ## Scripting Conventions
 

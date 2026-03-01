@@ -5,6 +5,9 @@
 
 set -euo pipefail
 
+# Load shared helpers (sed_inplace)
+source "$(cd "$(dirname "$0")/../hooks/lib" && pwd)/common.sh"
+
 STATE_FILE=".claude/plansmith.local.md"
 
 if [[ ! -f "$STATE_FILE" ]]; then
@@ -17,9 +20,7 @@ FRONTMATTER=$(sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$STATE_FILE")
 PHASE=$(echo "$FRONTMATTER" | grep '^phase:' | sed 's/phase: *//')
 PHASE_INDEX=$(echo "$FRONTMATTER" | grep '^phase_index:' | sed 's/phase_index: *//')
 
-# Deactivate using portable sed (macOS + Linux compatible)
-TEMP_FILE="${STATE_FILE}.tmp.$$"
-sed 's/^active: true/active: false/' "$STATE_FILE" > "$TEMP_FILE"
-mv "$TEMP_FILE" "$STATE_FILE"
+# Deactivate
+sed_inplace 's/^active: true/active: false/' "$STATE_FILE"
 
 echo "Planning loop cancelled (was at phase: ${PHASE:-unknown}, index: ${PHASE_INDEX:-unknown})."

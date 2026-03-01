@@ -1,5 +1,5 @@
 # Phase: EXPLORE
-# Validates codebase exploration output. Advances to ALTERNATIVES on pass.
+# Validates codebase exploration output. Advances to next phase on pass.
 # Sourced by stop-hook.sh — do not execute directly.
 # shellcheck disable=SC2154
 
@@ -48,10 +48,14 @@ $PROMPT_TEXT" \
     "Phase: EXPLORE | Read actual files and report findings. No plan yet."
 fi
 
-# Explore passed — advance to alternatives
+# Explore passed — advance to next phase
 advance_phase
-block_with \
-  "[plansmith] $PROGRESS Phase: ALTERNATIVES — Compare approaches before planning.
+NEXT_PHASE=$(grep '^phase: ' "$STATE_FILE" | sed 's/phase: *//')
+
+case "$NEXT_PHASE" in
+  alternatives)
+    block_with \
+      "[plansmith] $PROGRESS Phase: ALTERNATIVES — Compare approaches before planning.
 
 Based on your exploration findings, compare 2-3 possible approaches:
 For each approach:
@@ -63,4 +67,36 @@ Do NOT write a plan yet — only compare approaches.
 
 Original request:
 $PROMPT_TEXT" \
-  "Phase: ALTERNATIVES | Compare 2-3 approaches. Do NOT write a plan yet."
+      "Phase: ALTERNATIVES | Compare 2-3 approaches. Do NOT write a plan yet."
+    ;;
+  draft)
+    block_with \
+      "[plansmith] $PROGRESS Phase: DRAFT — Now write the plan.
+
+Based on your exploration findings, write a complete plan with ALL required sections:
+$REQUIRED_SECTIONS
+
+STEP ORDERING (Least-to-Most decomposition):
+- Order steps from simplest/most independent to most complex/most dependent
+- Each step should build on the foundation of previous steps
+- For each step, explicitly state which previous steps it depends on
+- If two steps are independent, note that they can be parallelized
+
+Each step must reference specific files and functions you discovered during exploration.
+Use English or Korean section headings (both accepted).
+
+Do NOT output <promise>$COMPLETION_PROMISE</promise> yet — there will be a critique phase first.
+
+Original request:
+$PROMPT_TEXT" \
+      "Phase: DRAFT | Write the complete plan with all required sections."
+    ;;
+  *)
+    block_with \
+      "[plansmith] $PROGRESS Proceeding to next phase.
+
+Original request:
+$PROMPT_TEXT" \
+      "Proceeding to next phase."
+    ;;
+esac

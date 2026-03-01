@@ -212,7 +212,7 @@ When enabled (default):
 |------|--------|
 | **Edit, Write, NotebookEdit** | Always blocked |
 | **Bash** | Read-only single commands only. Pipes, semicolons, redirects blocked. |
-| **Read, Glob, Grep, WebSearch, WebFetch, Task** | Always allowed |
+| **Read, Glob, Grep, WebSearch, WebFetch, Task, etc.** | Always allowed (all non-listed tools) |
 
 Use `--no-block-tools` to disable.
 
@@ -272,7 +272,7 @@ plansmith/
 │   └── phases/         # Per-phase validation (understand, explore, ...)
 ├── scripts/            # Setup, save, cancel scripts
 ├── templates/          # Plan rubric + 12 critique principles
-└── tests/              # Phase validation tests (36 unit + 32 integration)
+└── tests/              # Phase validation tests (39 unit + 35 integration)
 ```
 
 ## Requirements
