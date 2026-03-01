@@ -7,7 +7,7 @@
 sed_inplace() {
   local pattern="$1" file="$2"
   local tmp="${file}.tmp.$$"
-  sed "$pattern" "$file" > "$tmp" && mv "$tmp" "$file"
+  sed "$pattern" "$file" > "$tmp" && mv "$tmp" "$file" || { rm -f "$tmp"; return 1; }
 }
 
 # --- Advance to next phase ---

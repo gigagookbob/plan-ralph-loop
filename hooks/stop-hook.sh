@@ -129,8 +129,9 @@ TOTAL_PHASES=$(echo "$PHASES_STR" | tr ',' '\n' | grep -c '.' || true)
 PROGRESS="[$((PHASE_INDEX + 1))/$TOTAL_PHASES]"
 
 # --- 8. Phase dispatch ---
-PHASE_DIR="${CLAUDE_PLUGIN_ROOT:-}/hooks/phases"
-if [[ ! -d "$PHASE_DIR" ]]; then
+if [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]] && [[ -d "${CLAUDE_PLUGIN_ROOT}/hooks/phases" ]]; then
+  PHASE_DIR="${CLAUDE_PLUGIN_ROOT}/hooks/phases"
+else
   # Fallback for direct invocation without CLAUDE_PLUGIN_ROOT
   PHASE_DIR="$(cd "$(dirname "$0")" && pwd)/phases"
 fi

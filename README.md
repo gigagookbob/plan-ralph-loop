@@ -272,7 +272,7 @@ plansmith/
 │   └── phases/         # Per-phase validation (understand, explore, ...)
 ├── scripts/            # Setup, save, cancel scripts
 ├── templates/          # Plan rubric + 12 critique principles
-└── tests/              # Phase validation tests (39 unit + 35 integration)
+└── tests/              # Phase validation tests (44 unit + 35 integration)
 ```
 
 ## Requirements
