@@ -1,6 +1,6 @@
 ---
 description: "Start a planning-focused iterative loop (Plansmith)"
-argument-hint: "PROMPT [--max-phases N] [--refine-iterations N] [--phases \"a,b,c\"] [--skip-understand] [--skip-explore] [--skip-alternatives] [--open-critique] [--no-memory] [--clear-memory] [--no-block-tools]"
+argument-hint: "PROMPT [--max-phases N] [--max-iterations N] [--refine-iterations N] [--phases \"a,b,c\"] [--skip-understand] [--skip-explore] [--skip-alternatives] [--open-critique] [--no-memory] [--clear-memory] [--no-block-tools] [--required-sections \"A,B,C\"] [--completion-promise TEXT]"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh:*)"]
 hide-from-slash-command-tool: "true"
 ---

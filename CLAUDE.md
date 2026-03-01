@@ -55,7 +55,7 @@ Each phase has distinct validation:
 
 Key insights:
 - **Negative validation** (checking what must NOT be in the output) prevents Claude from collapsing phases together
-- **Perspective rotation** for repeated critique phases (technical → maintainability; devil's advocate는 3회차 이상에서만, `--refine-iterations 3+`)
+- **Perspective rotation** for repeated critique phases (technical → maintainability; devil's advocate only in round 3+, requires `--refine-iterations 3+`)
 - **Principle-based critique** (Constitutional AI): 12 enumerable principles with PASS/FAIL evaluation
 - **Aspirational prompts vs. minimum validators**: Prompts aim high (e.g., "8 of 12 principles, 3 FAILs") while validators enforce a minimum floor (e.g., 6 evidence points). This intentional gap avoids over-strict gating while encouraging thorough output.
 - **Multi-iteration** (Self-Refine): critique-revise cycles repeated 2× by default (configurable 1-4 via `--refine-iterations`). Phase sequence built dynamically: `understand,explore,alternatives,draft` + `(critique,revise)×N`. Overridden when `--phases` is explicit.
