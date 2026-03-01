@@ -5,7 +5,7 @@
 # shellcheck disable=SC2154
 
 # NEGATIVE VALIDATION: must NOT contain plan section headings (but file paths are OK)
-if echo "$LAST_OUTPUT" | grep -qiE "^#+ +(Goal|목표|Steps|단계|Scope|범위|Non-Scope|비범위|Verification|검증|Risks|리스크|Open Questions|오픈 질문)"; then
+if echo "$LAST_OUTPUT" | grep -qiE "^#+ +(Goal|Steps|Scope|Non-Scope|Verification|Risks|Risk|Open Questions|Open Question)"; then
   block_with \
     "[plansmith] $PROGRESS Phase: UNDERSTAND — Do NOT write a plan yet.
 
@@ -50,19 +50,6 @@ fi
 advance_phase
 NEXT_PHASE=$(grep '^phase: ' "$STATE_FILE" | sed 's/phase: *//')
 
-# Reflexion: inject session memory if transitioning to explore
-MEMORY_INJECT=""
-if [[ "$NEXT_PHASE" == "explore" ]] && [[ "$USE_MEMORY" == "true" ]] && [[ -f "$PROJECT_DIR/.claude/plansmith-memory.local.md" ]]; then
-  MEMORY_CONTEXT=$(tail -50 "$PROJECT_DIR/.claude/plansmith-memory.local.md")
-  if [[ -n "$MEMORY_CONTEXT" ]]; then
-    MEMORY_INJECT="
-
-LESSONS FROM PREVIOUS PLANNING SESSIONS (avoid these patterns):
-$MEMORY_CONTEXT
-"
-  fi
-fi
-
 case "$NEXT_PHASE" in
   explore)
     block_with \
@@ -76,7 +63,7 @@ Reference your problem definition, success criteria, and constraints as you expl
 3. RELEVANT PATTERNS: Existing patterns that affect the planned work
 4. DEPENDENCIES: External and internal dependencies
 5. CONSTRAINTS: Technical constraints discovered
-$MEMORY_INJECT
+
 Do NOT include headings like ## Goal, ## Steps, ## Scope, etc.
 
 Original request:
@@ -113,7 +100,7 @@ STEP ORDERING (Least-to-Most decomposition):
 - If two steps are independent, note that they can be parallelized
 
 Each step must reference specific files and functions.
-Use English or Korean section headings (both accepted).
+Use the required section headings (Goal, Scope, Non-Scope, Steps, Verification, Risks, Open Questions).
 
 Do NOT output <promise>$COMPLETION_PROMISE</promise> yet — there will be a critique phase first.
 

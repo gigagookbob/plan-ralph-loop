@@ -7,7 +7,6 @@ This plan will be developed in phases:
 4. **Draft**: Write the initial plan with all required sections (Least-to-Most step ordering)
 5. **Critique & Revise** (repeated): Multiple rounds of self-critique and revision
    - Critique evaluates against 12 principles (P1-P12) with PASS/FAIL (Constitutional AI)
-   - Each round uses a different perspective (technical → maintainability → devil's advocate)
    - Default: 2 rounds (configurable with --refine-iterations, Self-Refine)
 
 You will receive specific instructions for each phase. Follow them exactly.
@@ -18,13 +17,13 @@ All criteria below must be satisfied for the plan to be considered complete.
 
 ### Required Sections
 
-- [ ] **Goal / 목표**: Clear, measurable objective. What does "done" look like?
-- [ ] **Scope / 범위**: What IS included in this work. Be explicit about boundaries.
-- [ ] **Non-Scope / 비범위**: What is explicitly NOT included. Prevents scope creep.
-- [ ] **Steps / 단계별 계획**: Ordered, concrete implementation steps. Each step should reference specific files, functions, or modules.
-- [ ] **Verification / 검증**: How to verify correctness. Test commands, manual checks, acceptance criteria.
-- [ ] **Risks / 리스크**: What could go wrong. Each risk needs a mitigation strategy.
-- [ ] **Open Questions / 오픈 질문**: Uncertainties that need resolution. Who can answer them?
+- [ ] **Goal**: Clear, measurable objective. What does "done" look like?
+- [ ] **Scope**: What IS included in this work. Be explicit about boundaries.
+- [ ] **Non-Scope**: What is explicitly NOT included. Prevents scope creep.
+- [ ] **Steps**: Ordered, concrete implementation steps. Each step should reference specific files, functions, or modules.
+- [ ] **Verification**: How to verify correctness. Test commands, manual checks, acceptance criteria.
+- [ ] **Risks**: What could go wrong. Each risk needs a mitigation strategy.
+- [ ] **Open Questions**: Uncertainties that need resolution. Who can answer them?
 
 ### Quality Criteria
 
@@ -36,7 +35,7 @@ All criteria below must be satisfied for the plan to be considered complete.
 
 ### Self-Critique Checklist
 
-High-level questions for any critique mode. For principle-based critique (`--open-critique` 미사용 시), see `critique-principles.md` (P1-P12) for detailed PASS/FAIL evaluation criteria.
+High-level questions for self-review. See `critique-principles.md` (P1-P12) for detailed PASS/FAIL evaluation criteria.
 
 1. Would a new developer understand this plan without additional context?
 2. Are there implicit assumptions that should be made explicit?

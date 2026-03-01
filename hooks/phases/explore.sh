@@ -4,7 +4,7 @@
 # shellcheck disable=SC2154
 
 # NEGATIVE VALIDATION: must NOT contain plan section headings
-if echo "$LAST_OUTPUT" | grep -qiE "^#+ +(Goal|목표|Steps|단계|Scope|범위|Non-Scope|비범위|Verification|검증|Risks|리스크|Open Questions|오픈 질문)"; then
+if echo "$LAST_OUTPUT" | grep -qiE "^#+ +(Goal|Steps|Scope|Non-Scope|Verification|Risks|Risk|Open Questions|Open Question)"; then
   block_with \
     "[plansmith] $PROGRESS Phase: EXPLORE — You wrote plan section headings. Do NOT write a plan yet.
 
@@ -83,7 +83,7 @@ STEP ORDERING (Least-to-Most decomposition):
 - If two steps are independent, note that they can be parallelized
 
 Each step must reference specific files and functions you discovered during exploration.
-Use English or Korean section headings (both accepted).
+Use the required section headings (Goal, Scope, Non-Scope, Steps, Verification, Risks, Open Questions).
 
 Do NOT output <promise>$COMPLETION_PROMISE</promise> yet — there will be a critique phase first.
 

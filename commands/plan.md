@@ -1,6 +1,6 @@
 ---
 description: "Start a planning-focused iterative loop (Plansmith)"
-argument-hint: "PROMPT [--max-phases N] [--max-iterations N] [--refine-iterations N] [--phases \"a,b,c\"] [--skip-understand] [--skip-explore] [--skip-alternatives] [--open-critique] [--no-memory] [--clear-memory] [--no-block-tools] [--required-sections \"A,B,C\"] [--completion-promise TEXT]"
+argument-hint: "PROMPT [--max-phases N] [--max-iterations N] [--refine-iterations N] [--no-block-tools]"
 allowed-tools: ["Bash(${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh:*)"]
 hide-from-slash-command-tool: "true"
 ---
@@ -26,7 +26,7 @@ You are now in **planning mode** with a phase-based workflow. File modifications
 Default: 8 phases with 2 critique-revise cycles (configurable with `--refine-iterations`).
 
 1. **UNDERSTAND**: Analyze the problem. Define success criteria, constraints, assumptions. Do NOT read code yet.
-2. **EXPLORE**: Read the codebase. List files, architecture, patterns. Past session learnings injected (Reflexion). Do NOT write a plan.
+2. **EXPLORE**: Read the codebase. List files, architecture, patterns. Do NOT write a plan.
 3. **ALTERNATIVES**: Compare 2-3 approaches with pros/cons. Choose one. Do NOT write a plan.
 4. **DRAFT**: Write a complete plan with all required sections. Steps ordered simple → complex (Least-to-Most).
 5. **CRITIQUE (round 1)**: Evaluate plan against 12 principles (P1-P12) with PASS/FAIL. Technical perspective. Do NOT rewrite or finalize.
@@ -36,17 +36,9 @@ Default: 8 phases with 2 critique-revise cycles (configurable with `--refine-ite
 
 Each phase has validation — you cannot skip ahead.
 
-## Required Sections (English or Korean headings accepted)
+## Required Sections
 
-| English | Korean |
-|---------|--------|
-| ## Goal | ## 목표 |
-| ## Scope | ## 범위 |
-| ## Non-Scope | ## 비범위 |
-| ## Steps | ## 단계별 계획 |
-| ## Verification | ## 검증 |
-| ## Risks | ## 리스크 |
-| ## Open Questions | ## 오픈 질문 |
+Goal, Scope, Non-Scope, Steps, Verification, Risks, Open Questions
 
 ## Rules
 

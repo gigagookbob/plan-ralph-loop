@@ -44,7 +44,6 @@ create_state_file() {
   local phase="$1"
   local phase_index="${2:-0}"
   local max_phases="${3:-10}"
-  local use_memory="${4:-true}"
   cat > "$TEST_TMPDIR/.claude/plansmith.local.md" << STATEEOF
 ---
 active: true
@@ -53,8 +52,6 @@ phase_index: $phase_index
 max_phases: $max_phases
 phases: "understand,explore,alternatives,draft,critique,revise,critique,revise"
 refine_iterations: 2
-critique_mode: "principles"
-use_memory: $use_memory
 completion_promise: "PLAN_OK"
 block_tools: true
 required_sections: "Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
@@ -64,23 +61,6 @@ required_sections: "Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions
 Build a new feature for X.
 <!-- /PROMPT -->
 STATEEOF
-}
-
-# Add critique round markers to state file for memory extraction tests
-add_critique_to_state() {
-  cat >> "$TEST_TMPDIR/.claude/plansmith.local.md" << 'CRITIQUEEOF'
-
-<!-- CRITIQUE_ROUND_1 -->
-1. P1 Correctness: FAIL — Input validation missing in login handler
-2. P2 Completeness: PASS — All required sections present
-3. P3 Edge Cases: FAIL — No timeout handling for external API calls
-4. P4 Dependencies: PASS — Import order correct
-5. P5 Error Handling: FAIL — Missing try-catch in async operations
-6. P6 Testing: PASS — Test plan covers main scenarios
-7. P7 Security: PASS — No injection vulnerabilities found
-8. P8 Performance: PASS — Query optimization addressed
-<!-- /CRITIQUE_ROUND_1 -->
-CRITIQUEEOF
 }
 
 # Parse a YAML value from a state file's frontmatter
@@ -184,15 +164,7 @@ test_setup() {
   assert_equals "--max-iterations sets max_phases" "5" "$max_phases"
   cleanup_tmpdir
 
-  # Test 4: --skip-understand removes understand from phases
-  setup_tmpdir
-  cd "$TEST_TMPDIR"
-  CLAUDE_PLUGIN_ROOT="$PROJECT_ROOT" bash "$PROJECT_ROOT/scripts/setup.sh" "Plan Y" --skip-understand > /dev/null 2>&1
-  phases=$(get_state_value "$TEST_TMPDIR/.claude/plansmith.local.md" "phases")
-  assert_contains "--skip-understand removes understand" "^explore" "$phases"
-  cleanup_tmpdir
-
-  # Test 5: No prompt gives error
+  # Test 4: No prompt gives error
   setup_tmpdir
   cd "$TEST_TMPDIR"
   local exit_code=0
@@ -200,7 +172,7 @@ test_setup() {
   assert_equals "No prompt: exit 1" "1" "$exit_code"
   cleanup_tmpdir
 
-  # Test 6: --refine-iterations 5 is rejected (out of range 1-4)
+  # Test 5: --refine-iterations 5 is rejected (out of range 1-4)
   setup_tmpdir
   cd "$TEST_TMPDIR"
   exit_code=0
@@ -208,26 +180,7 @@ test_setup() {
   assert_equals "--refine-iterations 5: exit 1" "1" "$exit_code"
   cleanup_tmpdir
 
-  # Test 7: Empty phases after sanitization gives error
-  setup_tmpdir
-  cd "$TEST_TMPDIR"
-  exit_code=0
-  CLAUDE_PLUGIN_ROOT="$PROJECT_ROOT" bash "$PROJECT_ROOT/scripts/setup.sh" \
-    "Plan X" --phases "," 2>/dev/null || exit_code=$?
-  assert_equals "--phases ',': exit 1" "1" "$exit_code"
-  cleanup_tmpdir
-
-  # Test 8: Double comma in --phases is sanitized
-  setup_tmpdir
-  cd "$TEST_TMPDIR"
-  CLAUDE_PLUGIN_ROOT="$PROJECT_ROOT" bash "$PROJECT_ROOT/scripts/setup.sh" \
-    "Plan Z" --phases "understand,,explore,,draft" > /dev/null 2>&1
-  phases=$(get_state_value "$TEST_TMPDIR/.claude/plansmith.local.md" "phases")
-  assert_equals "--phases with double commas: sanitized" \
-    "understand,explore,draft" "$phases"
-  cleanup_tmpdir
-
-  # Test 9: State file contains prompt markers (B-1)
+  # Test 6: State file contains prompt markers (B-1)
   setup_tmpdir
   cd "$TEST_TMPDIR"
   CLAUDE_PLUGIN_ROOT="$PROJECT_ROOT" bash "$PROJECT_ROOT/scripts/setup.sh" "Test prompt here" > /dev/null 2>&1
@@ -298,8 +251,6 @@ phase_index: 0
 max_phases: 10
 phases: "understand,explore,alternatives,draft,critique,revise,critique,revise"
 refine_iterations: 2
-critique_mode: "principles"
-use_memory: false
 completion_promise: "PLAN_OK"
 block_tools: true
 required_sections: "Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
@@ -457,80 +408,6 @@ Fix auth.
   assert_not_contains "Promise tag stripped" "<promise>" "$content"
   cleanup_tmpdir
 
-  # Test 3: Memory extracted from principle critiques (Tier 1)
-  setup_tmpdir
-  create_state_file "revise" 7
-  add_critique_to_state
-  bash "$PROJECT_ROOT/scripts/save.sh" "$TEST_TMPDIR" "Final plan." "completed" 2>/dev/null
-  assert_file_exists "Memory file created" "$TEST_TMPDIR/.claude/plansmith-memory.local.md"
-  local memory_content
-  memory_content=$(cat "$TEST_TMPDIR/.claude/plansmith-memory.local.md")
-  assert_contains "Memory contains FAIL items" "FAIL" "$memory_content"
-  assert_contains "Memory contains P-number context" "P[0-9]+" "$memory_content"
-  cleanup_tmpdir
-
-  # Test 4: use_memory: false → memory file not created
-  setup_tmpdir
-  create_state_file "revise" 7 10 "false"
-  add_critique_to_state
-  bash "$PROJECT_ROOT/scripts/save.sh" "$TEST_TMPDIR" "Final plan." "completed" 2>/dev/null
-  assert_file_not_exists "Memory disabled: no memory file" "$TEST_TMPDIR/.claude/plansmith-memory.local.md"
-  cleanup_tmpdir
-
-  # Test 5: Memory task field extracts actual prompt (not comment marker)
-  setup_tmpdir
-  create_state_file "revise" 7
-  add_critique_to_state
-  bash "$PROJECT_ROOT/scripts/save.sh" "$TEST_TMPDIR" "Final plan." "completed" 2>/dev/null
-  memory_content=$(cat "$TEST_TMPDIR/.claude/plansmith-memory.local.md")
-  assert_contains "Memory task is actual prompt" "Build a new feature for X" "$memory_content"
-  assert_not_contains "Memory task is not comment marker" "<!-- PROMPT -->" "$memory_content"
-  cleanup_tmpdir
-
-  # Test 6: Memory extraction fallback for old-format state files
-  setup_tmpdir
-  cat > "$TEST_TMPDIR/.claude/plansmith.local.md" << 'OLDEOF'
----
-active: true
-phase: revise
-phase_index: 7
-max_phases: 10
-phases: "understand,explore,alternatives,draft,critique,revise,critique,revise"
-refine_iterations: 2
-critique_mode: "principles"
-use_memory: true
-completion_promise: "PLAN_OK"
-block_tools: true
-required_sections: "Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
----
-Old format prompt without markers.
-OLDEOF
-  add_critique_to_state
-  bash "$PROJECT_ROOT/scripts/save.sh" "$TEST_TMPDIR" "Final plan." "completed" 2>/dev/null
-  memory_content=$(cat "$TEST_TMPDIR/.claude/plansmith-memory.local.md")
-  assert_contains "Old-format fallback: prompt extracted" "Old format prompt" "$memory_content"
-  cleanup_tmpdir
-
-  # Test 7: Memory cap at 100 lines enforced
-  setup_tmpdir
-  create_state_file "revise" 7
-  add_critique_to_state
-  # Pre-populate memory with 120 lines
-  local memory_file="$TEST_TMPDIR/.claude/plansmith-memory.local.md"
-  for i in $(seq 1 120); do
-    echo "Line $i of old memory content" >> "$memory_file"
-  done
-  bash "$PROJECT_ROOT/scripts/save.sh" "$TEST_TMPDIR" "Final plan." "completed" 2>/dev/null
-  local line_count
-  line_count=$(wc -l < "$memory_file" | tr -d ' ')
-  if [[ "$line_count" -le 100 ]]; then
-    echo -e "  ${GREEN}PASS${RESET}: Memory capped at 100 lines (got $line_count)"
-    PASS_COUNT=$((PASS_COUNT + 1))
-  else
-    echo -e "  ${RED}FAIL${RESET}: Memory should be ≤100 lines, got $line_count"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
-  fi
-  cleanup_tmpdir
 }
 
 # ============================================================
