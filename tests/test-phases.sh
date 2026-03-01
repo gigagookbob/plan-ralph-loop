@@ -49,8 +49,6 @@ phase_index: $phase_index
 max_phases: 10
 phases: "understand,explore,alternatives,draft,critique,revise,critique,revise"
 refine_iterations: 2
-critique_mode: "principles"
-use_memory: false
 completion_promise: "PLAN_OK"
 block_tools: true
 required_sections: "Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
@@ -84,8 +82,6 @@ setup_env() {
   export PHASES_STR="understand,explore,alternatives,draft,critique,revise,critique,revise"
   export COMPLETION_PROMISE="PLAN_OK"
   export REQUIRED_SECTIONS="Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
-  export CRITIQUE_MODE="principles"
-  export USE_MEMORY="false"
   export LAST_OUTPUT="$last_output"
   export PROMPT_TEXT="Build a new feature for X."
   export TOTAL_PHASES=8
@@ -621,41 +617,6 @@ MOCKEOF
   cleanup_tmpdir
 }
 
-# --- Perspective rotation test ---
-
-test_perspective_rotation() {
-  echo -e "\n${BOLD}=== Critique perspective rotation ===${RESET}"
-
-  # First critique (index 4): should be TECHNICAL
-  setup_tmpdir
-  setup_env "critique" 4 "Not enough items."
-  run_phase "critique.sh" || true
-  local reason1
-  reason1=$(get_block_reason)
-  if echo "$reason1" | grep -q "TECHNICAL\|technical"; then
-    echo -e "  ${GREEN}PASS${RESET}: First critique uses TECHNICAL perspective"
-    PASS_COUNT=$((PASS_COUNT + 1))
-  else
-    echo -e "  ${RED}FAIL${RESET}: First critique should use TECHNICAL perspective"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
-  fi
-  cleanup_tmpdir
-
-  # Second critique (index 6): should be MAINTAINABILITY
-  setup_tmpdir
-  setup_env "critique" 6 "Not enough items."
-  run_phase "critique.sh" || true
-  local reason2
-  reason2=$(get_block_reason)
-  if echo "$reason2" | grep -q "MAINTAINABILITY\|maintainability"; then
-    echo -e "  ${GREEN}PASS${RESET}: Second critique uses MAINTAINABILITY perspective"
-    PASS_COUNT=$((PASS_COUNT + 1))
-  else
-    echo -e "  ${RED}FAIL${RESET}: Second critique should use MAINTAINABILITY perspective"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
-  fi
-  cleanup_tmpdir
-}
 
 # --- State file advancement test ---
 
@@ -734,110 +695,6 @@ test_dispatcher() {
   cleanup_tmpdir
 }
 
-# --- --skip-* phase removal tests (B-4: BSD sed compatibility) ---
-
-test_skip_phases() {
-  echo -e "\n${BOLD}=== --skip-* phase removal ===${RESET}"
-
-  local phases="understand,explore,alternatives,draft,critique,revise"
-  local result
-
-  # Test: --skip-understand removes understand
-  result=$(echo "$phases" | sed -E 's/understand,?//' | sed 's/^,//')
-  if [[ "$result" == "explore,alternatives,draft,critique,revise" ]]; then
-    echo -e "  ${GREEN}PASS${RESET}: --skip-understand removes understand"
-    PASS_COUNT=$((PASS_COUNT + 1))
-  else
-    echo -e "  ${RED}FAIL${RESET}: Expected 'explore,alternatives,...', got '$result'"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
-  fi
-
-  # Test: --skip-explore removes explore
-  result=$(echo "$phases" | sed -E 's/explore,?//' | sed 's/^,//')
-  if [[ "$result" == "understand,alternatives,draft,critique,revise" ]]; then
-    echo -e "  ${GREEN}PASS${RESET}: --skip-explore removes explore"
-    PASS_COUNT=$((PASS_COUNT + 1))
-  else
-    echo -e "  ${RED}FAIL${RESET}: Expected 'understand,alternatives,...', got '$result'"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
-  fi
-
-  # Test: --skip-alternatives removes alternatives
-  result=$(echo "$phases" | sed -E 's/alternatives,?//' | sed 's/^,//')
-  if [[ "$result" == "understand,explore,draft,critique,revise" ]]; then
-    echo -e "  ${GREEN}PASS${RESET}: --skip-alternatives removes alternatives"
-    PASS_COUNT=$((PASS_COUNT + 1))
-  else
-    echo -e "  ${RED}FAIL${RESET}: Expected 'understand,explore,draft,...', got '$result'"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
-  fi
-}
-
-# --- Skip flag dynamic transition tests (A-1) ---
-
-# Helper: override PHASES_STR and update state file to match
-override_phases() {
-  local new_phases="$1"
-  export PHASES_STR="$new_phases"
-  local sf="$TEST_TMPDIR/.claude/plansmith.local.md"
-  local tf="${sf}.tmp.$$"
-  sed "s/^phases: .*/phases: \"$new_phases\"/" "$sf" > "$tf" && mv "$tf" "$sf"
-}
-
-test_skip_transitions() {
-  echo -e "\n${BOLD}=== Skip flag dynamic transitions ===${RESET}"
-
-  # Test 1: understand → alternatives (explore skipped)
-  setup_tmpdir
-  setup_env "understand" 0 "1. The problem is that auth is broken.
-2. The success criteria: all flows work.
-3. Constraints: backward compat required.
-4. Assumptions: stable DB schema.
-5. Impact: all users affected."
-  override_phases "understand,alternatives,draft,critique,revise,critique,revise"
-  run_phase "understand.sh" || true
-  assert_blocked "understand → alternatives (explore skipped)" "ALTERNATIVES"
-  cleanup_tmpdir
-
-  # Test 2: understand → draft (explore + alternatives skipped)
-  setup_tmpdir
-  setup_env "understand" 0 "1. The problem is that auth is broken.
-2. The success criteria: all flows work.
-3. Constraints: backward compat required.
-4. Assumptions: stable DB schema.
-5. Impact: all users affected."
-  override_phases "understand,draft,critique,revise,critique,revise"
-  run_phase "understand.sh" || true
-  assert_blocked "understand → draft (explore + alternatives skipped)" "DRAFT"
-  cleanup_tmpdir
-
-  # Test 3: explore → draft (alternatives skipped)
-  setup_tmpdir
-  setup_env "explore" 1 "I examined the following files:
-- src/auth/login.ts handles user authentication
-- src/api/routes.ts defines the API endpoints
-- config/database.yml has the DB configuration"
-  override_phases "understand,explore,draft,critique,revise,critique,revise"
-  run_phase "explore.sh" || true
-  assert_blocked "explore → draft (alternatives skipped)" "DRAFT"
-  cleanup_tmpdir
-
-  # Test 4: alternatives → non-draft (R3 regression: dynamic dispatch)
-  setup_tmpdir
-  setup_env "alternatives" 1 "1. Option A: Refactor the auth module
-   Pros: cleaner code, better testability
-   Cons: more work upfront
-
-2. Option B: Patch the existing code
-   Pros: faster to implement
-   Cons: technical debt
-
-I recommend Option A because the pros outweigh the cons long-term."
-  override_phases "understand,alternatives,critique,revise"
-  run_phase "alternatives.sh" || true
-  assert_blocked "alternatives → critique (draft skipped)" "next phase"
-  cleanup_tmpdir
-}
 
 # --- sed_inplace failure cleanup test ---
 
@@ -918,11 +775,8 @@ test_revise
 test_yaml_safe
 test_trailing_comma
 test_save_failure_handling
-test_perspective_rotation
 test_state_advancement
 test_dispatcher
-test_skip_phases
-test_skip_transitions
 test_sed_inplace_failure
 
 echo -e "\n${BOLD}=== Results ===${RESET}"

@@ -49,11 +49,6 @@ MAX_PHASES=$(echo "$FRONTMATTER" | grep '^max_phases:' | sed 's/max_phases: *//'
 COMPLETION_PROMISE=$(echo "$FRONTMATTER" | grep '^completion_promise:' | sed 's/completion_promise: *//' | sed 's/^"\(.*\)"$/\1/')
 REQUIRED_SECTIONS=$(echo "$FRONTMATTER" | grep '^required_sections:' | sed 's/required_sections: *//' | sed 's/^"\(.*\)"$/\1/')
 PHASES_STR=$(echo "$FRONTMATTER" | grep '^phases:' | sed 's/phases: *//' | sed 's/^"\(.*\)"$/\1/')
-CRITIQUE_MODE=$(echo "$FRONTMATTER" | grep '^critique_mode:' | sed 's/critique_mode: *//' | sed 's/^"\(.*\)"$/\1/' || true)
-USE_MEMORY=$(echo "$FRONTMATTER" | grep '^use_memory:' | sed 's/use_memory: *//' || true)
-CRITIQUE_MODE="${CRITIQUE_MODE:-principles}"
-USE_MEMORY="${USE_MEMORY:-true}"
-
 if [[ "$ACTIVE" != "true" ]]; then
   exit 0
 fi

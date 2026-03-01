@@ -18,17 +18,7 @@ done
 PROMPT_PARTS=()
 MAX_PHASES=10
 BLOCK_TOOLS="true"
-REQUIRED_SECTIONS="Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
-COMPLETION_PROMISE="PLAN_OK"
-# Built dynamically below: understand,explore,alternatives,draft + (critique,revise)×N
-PHASES=""
-PHASES_EXPLICIT="false"
 REFINE_ITERATIONS=2
-CRITIQUE_MODE="principles"
-USE_MEMORY="true"
-SKIP_UNDERSTAND="false"
-SKIP_EXPLORE="false"
-SKIP_ALTERNATIVES="false"
 
 # --- Parse arguments ---
 while [[ $# -gt 0 ]]; do
@@ -46,23 +36,8 @@ ARGUMENTS:
 OPTIONS:
   --max-phases <n>               Maximum phase transitions (default: 10)
   --max-iterations <n>           Alias for --max-phases
-  --phases "a,b,c,d"             Custom phase sequence (default: dynamic,
-                                 e.g. understand,explore,alternatives,draft,
-                                 critique,revise,critique,revise for 2 cycles)
-                                 Note: --skip-* flags still apply after --phases
   --refine-iterations <n>        Number of critique-revise cycles, 1-4 (default: 2)
-                                 Based on Self-Refine (Madaan et al., NeurIPS 2023)
-  --skip-understand              Skip understand phase
-  --skip-explore                 Skip explore phase
-  --skip-alternatives            Skip alternatives phase
-  --open-critique                Use open-ended critique instead of principle-based
-                                 (default: principle-based, per Constitutional AI)
-  --no-memory                    Disable session memory injection (Reflexion)
-  --clear-memory                 Clear accumulated session memories
   --no-block-tools               Disable tool blocking (default: blocking ON)
-  --required-sections "A,B,C"    Required sections, comma-separated
-                                 (default: Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions)
-  --completion-promise <text>    Completion promise (default: PLAN_OK)
   -h, --help                     Show this help
 
 PHASES:
@@ -70,14 +45,13 @@ PHASES:
   explore      Read codebase, list findings (no plan writing allowed)
   alternatives Compare 2-3 approaches, choose one with justification
   draft        Write complete plan with all required sections
-  critique     Self-critique: list numbered weaknesses (no rewriting)
+  critique     Self-critique: evaluate against 12 principles (no rewriting)
   revise       Rewrite plan addressing critique items, can finalize
   iterate      (fallback) Further revision if no more critique rounds remain
 
 EXAMPLES:
   /plansmith:plan Design the authentication system --max-phases 12
-  /plansmith:plan Plan API refactor --skip-understand --skip-explore
-  /plansmith:plan Design caching --phases "draft,critique,revise"
+  /plansmith:plan Design caching layer --refine-iterations 3
   /plansmith:plan Plan DB migration --no-block-tools
 
 STOPPING:
@@ -97,15 +71,6 @@ HELP_EOF
       MAX_PHASES="$2"
       shift 2
       ;;
-    --phases)
-      if [[ -z "${2:-}" ]]; then
-        echo "Error: --phases requires a comma-separated list" >&2
-        exit 1
-      fi
-      PHASES="$2"
-      PHASES_EXPLICIT="true"
-      shift 2
-      ;;
     --refine-iterations)
       if [[ -z "${2:-}" ]]; then
         echo "Error: --refine-iterations requires a number (1-4)" >&2
@@ -118,50 +83,9 @@ HELP_EOF
       REFINE_ITERATIONS="$2"
       shift 2
       ;;
-    --open-critique)
-      CRITIQUE_MODE="open"
-      shift
-      ;;
-    --no-memory)
-      USE_MEMORY="false"
-      shift
-      ;;
-    --clear-memory)
-      rm -f ".claude/plansmith-memory.local.md"
-      echo "Plansmith memory cleared."
-      shift
-      ;;
-    --skip-understand)
-      SKIP_UNDERSTAND="true"
-      shift
-      ;;
-    --skip-explore)
-      SKIP_EXPLORE="true"
-      shift
-      ;;
-    --skip-alternatives)
-      SKIP_ALTERNATIVES="true"
-      shift
-      ;;
     --no-block-tools)
       BLOCK_TOOLS="false"
       shift
-      ;;
-    --required-sections)
-      if [[ -z "${2:-}" ]]; then
-        echo "Error: --required-sections requires a comma-separated list" >&2
-        exit 1
-      fi
-      REQUIRED_SECTIONS="$2"
-      shift 2
-      ;;
-    --completion-promise)
-      if [[ -z "${2:-}" ]]; then
-        echo "Error: --completion-promise requires a text argument" >&2
-        exit 1
-      fi
-      COMPLETION_PROMISE="$2"
-      shift 2
       ;;
     *)
       PROMPT_PARTS+=("$1")
@@ -185,32 +109,10 @@ if [[ -z "$PROMPT" ]]; then
 fi
 
 # Build dynamic phase sequence (Self-Refine: multiple critique-revise cycles)
-if [[ "$PHASES_EXPLICIT" != "true" ]]; then
-  PHASES="understand,explore,alternatives,draft"
-  for ((i=1; i<=REFINE_ITERATIONS; i++)); do
-    PHASES="${PHASES},critique,revise"
-  done
-fi
-
-# Apply --skip-* flags after dynamic building
-if [[ "$SKIP_UNDERSTAND" == "true" ]]; then
-  PHASES=$(echo "$PHASES" | sed -E 's/understand,?//' | sed 's/^,//')
-fi
-if [[ "$SKIP_EXPLORE" == "true" ]]; then
-  PHASES=$(echo "$PHASES" | sed -E 's/explore,?//' | sed 's/^,//')
-fi
-if [[ "$SKIP_ALTERNATIVES" == "true" ]]; then
-  PHASES=$(echo "$PHASES" | sed -E 's/alternatives,?//' | sed 's/^,//')
-fi
-
-# Strip leading/trailing commas (defensive)
-PHASES=$(echo "$PHASES" | sed 's/,,*/,/g; s/^,//; s/,$//')
-
-# Validate phases is not empty
-if [[ -z "$PHASES" ]]; then
-  echo "Error: Phase list is empty after processing. At least one phase is required." >&2
-  exit 1
-fi
+PHASES="understand,explore,alternatives,draft"
+for ((i=1; i<=REFINE_ITERATIONS; i++)); do
+  PHASES="${PHASES},critique,revise"
+done
 
 # Ensure .claude directory exists
 mkdir -p .claude
@@ -239,22 +141,10 @@ fi
 
 # Read critique principles template (Constitutional AI)
 CRITIQUE_TEMPLATE=""
-if [[ "$CRITIQUE_MODE" == "principles" ]]; then
-  CRITIQUE_TEMPLATE_FILE="${PLUGIN_ROOT}/templates/critique-principles.md"
-  if [[ -f "$CRITIQUE_TEMPLATE_FILE" ]]; then
-    CRITIQUE_TEMPLATE=$(cat "$CRITIQUE_TEMPLATE_FILE")
-  fi
+CRITIQUE_TEMPLATE_FILE="${PLUGIN_ROOT}/templates/critique-principles.md"
+if [[ -f "$CRITIQUE_TEMPLATE_FILE" ]]; then
+  CRITIQUE_TEMPLATE=$(cat "$CRITIQUE_TEMPLATE_FILE")
 fi
-
-# YAML-safe: strip characters that break double-quoted YAML values.
-# Our YAML is parsed by sed (not a real parser), so escaping is impractical.
-yaml_safe() {
-  printf '%s' "$1" | tr -d '"\\\n\r'
-}
-
-SAFE_PROMISE=$(yaml_safe "$COMPLETION_PROMISE")
-SAFE_SECTIONS=$(yaml_safe "$REQUIRED_SECTIONS")
-SAFE_PHASES=$(yaml_safe "$PHASES")
 
 # Create state file
 cat > "$STATE_FILE" <<EOF
@@ -263,13 +153,11 @@ active: true
 phase: $FIRST_PHASE
 phase_index: 0
 max_phases: $MAX_PHASES
-completion_promise: "$SAFE_PROMISE"
+completion_promise: "PLAN_OK"
 block_tools: $BLOCK_TOOLS
-required_sections: "$SAFE_SECTIONS"
-phases: "$SAFE_PHASES"
+required_sections: "Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
+phases: "$PHASES"
 refine_iterations: $REFINE_ITERATIONS
-critique_mode: "$CRITIQUE_MODE"
-use_memory: $USE_MEMORY
 started_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ---
 
@@ -290,10 +178,7 @@ Plansmith activated!
   Phases: $PHASES
   Max phase transitions: $MAX_PHASES
   Refine iterations: $REFINE_ITERATIONS (Self-Refine)
-  Critique mode: $CRITIQUE_MODE ($(if [[ "$CRITIQUE_MODE" == "principles" ]]; then echo "Constitutional AI"; else echo "open-ended"; fi))
-  Session memory: $(if [[ "$USE_MEMORY" == "true" ]]; then echo "ON (Reflexion)"; else echo "OFF"; fi)
   Tool blocking: $(if [[ "$BLOCK_TOOLS" == "true" ]]; then echo "ON (Edit/Write/Bash blocked)"; else echo "OFF"; fi)
-  Required sections: $REQUIRED_SECTIONS
   Starting phase: $FIRST_PHASE
 
 The loop will progress through: $PHASES
@@ -306,8 +191,8 @@ PHASE SEQUENCE
   explore       → Read codebase, list findings (no plan yet)
   alternatives  → Compare 2-3 approaches, choose one
   draft         → Write complete plan with all required sections
-  critique      → Evaluate against principles / list weaknesses (×${REFINE_ITERATIONS})
-  revise        → Address critiques, output <promise>${COMPLETION_PROMISE}</promise> (×${REFINE_ITERATIONS})
+  critique      → Evaluate against 12 principles with PASS/FAIL (×${REFINE_ITERATIONS})
+  revise        → Address critiques, output <promise>PLAN_OK</promise> (×${REFINE_ITERATIONS})
 ===================================================================
 EOF
 

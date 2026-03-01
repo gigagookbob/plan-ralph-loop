@@ -14,7 +14,7 @@ Original request:
 $PROMPT_TEXT" \
     "Phase: ALTERNATIVES | Remove the promise tag. Compare approaches only."
 fi
-if echo "$LAST_OUTPUT" | grep -qiE "^#+ +(Goal|목표|Steps|단계|Scope|범위|Non-Scope|비범위|Verification|검증|Risks|리스크|Open Questions|오픈 질문)"; then
+if echo "$LAST_OUTPUT" | grep -qiE "^#+ +(Goal|Steps|Scope|Non-Scope|Verification|Risks|Risk|Open Questions|Open Question)"; then
   block_with \
     "[plansmith] $PROGRESS Phase: ALTERNATIVES — Do NOT write a plan yet.
 
@@ -66,7 +66,7 @@ STEP ORDERING (Least-to-Most decomposition):
 - If two steps are independent, note that they can be parallelized
 
 Each step must reference specific files and functions you discovered during exploration.
-Use English or Korean section headings (both accepted).
+Use the required section headings (Goal, Scope, Non-Scope, Steps, Verification, Risks, Open Questions).
 
 When the draft is complete, the next phase will ask you to self-critique it.
 Do NOT output <promise>$COMPLETION_PROMISE</promise> yet — there will be a critique phase first.

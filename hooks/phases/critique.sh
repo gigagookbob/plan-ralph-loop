@@ -1,22 +1,9 @@
 # Phase: CRITIQUE
-# Validates critique output with perspective rotation and principle evaluation.
-# Stores critique data for Reflexion memory extraction. Advances to REVISE on pass.
+# Validates principle-based critique output. Advances to REVISE on pass.
 # Sourced by stop-hook.sh — do not execute directly.
 # shellcheck disable=SC2154
 
-# --- Perspective rotation for repeated critique phases ---
-# CRITIQUE_NUM counts how many times "critique" appears in phases[0..PHASE_INDEX].
-# PHASE_INDEX is the value BEFORE advance_phase() is called (advance happens after validation).
-# Example: phases="...,draft(3),critique(4),revise(5),critique(6),..."
-#   At PHASE_INDEX=4: head -n 5 -> counts 1 critique (first round)
-#   At PHASE_INDEX=6: head -n 7 -> counts 2 critiques (second round)
-CRITIQUE_NUM=$(echo "$PHASES_STR" | tr ',' '\n' | head -n $((PHASE_INDEX + 1)) | grep -c '^critique$' || true)
-
-case "$CRITIQUE_NUM" in
-  1) CRITIQUE_PERSPECTIVE="Critique from a TECHNICAL perspective: implementation correctness, edge cases, dependency ordering, error handling, performance implications." ;;
-  2) CRITIQUE_PERSPECTIVE="Critique from a USER/MAINTAINABILITY perspective: Would a new developer understand this? Is documentation sufficient? What is the long-term maintenance cost?" ;;
-  *) CRITIQUE_PERSPECTIVE="Critique as DEVIL'S ADVOCATE: What scenarios would make this plan fail? What are the most optimistic assumptions? What hidden complexity exists?" ;;
-esac
+CRITIQUE_PERSPECTIVE="Evaluate the plan thoroughly: implementation correctness, edge cases, dependency ordering, error handling, maintainability, and clarity."
 
 # NEGATIVE VALIDATION: must NOT contain promise tag
 if echo "$LAST_OUTPUT" | grep -qE '<promise>'; then
@@ -52,14 +39,13 @@ $PROMPT_TEXT" \
     "Phase: CRITIQUE | Need at least 3 numbered weaknesses. Found $NUMBERED_COUNT."
 fi
 
-# PRINCIPLE VALIDATION (Constitutional AI): check principle references in principles mode
-if [[ "$CRITIQUE_MODE" == "principles" ]]; then
-  PRINCIPLE_REFS=$(echo "$LAST_OUTPUT" | grep -ciE '\bP[0-9]+\b' || true)
-  PASS_FAIL_REFS=$(echo "$LAST_OUTPUT" | grep -ciE '\b(PASS|FAIL)\b' || true)
-  TOTAL_PRINCIPLE_EVIDENCE=$((PRINCIPLE_REFS + PASS_FAIL_REFS))
-  if [[ "$TOTAL_PRINCIPLE_EVIDENCE" -lt 6 ]]; then
-    block_with \
-      "[plansmith] $PROGRESS Phase: CRITIQUE — Insufficient principle evaluation.
+# PRINCIPLE VALIDATION (Constitutional AI): check principle references
+PRINCIPLE_REFS=$(echo "$LAST_OUTPUT" | grep -ciE '\bP[0-9]+\b' || true)
+PASS_FAIL_REFS=$(echo "$LAST_OUTPUT" | grep -ciE '\b(PASS|FAIL)\b' || true)
+TOTAL_PRINCIPLE_EVIDENCE=$((PRINCIPLE_REFS + PASS_FAIL_REFS))
+if [[ "$TOTAL_PRINCIPLE_EVIDENCE" -lt 6 ]]; then
+  block_with \
+    "[plansmith] $PROGRESS Phase: CRITIQUE — Insufficient principle evaluation.
 
 Found $PRINCIPLE_REFS principle references (P1-P12) and $PASS_FAIL_REFS PASS/FAIL judgments (need 6+ total).
 $CRITIQUE_PERSPECTIVE
@@ -69,15 +55,8 @@ You must address at least 8 principles and find at least 3 FAILs.
 
 Original request:
 $PROMPT_TEXT" \
-      "Phase: CRITIQUE | Need 6+ principle references (P1-P12 + PASS/FAIL). Found $TOTAL_PRINCIPLE_EVIDENCE."
-  fi
+    "Phase: CRITIQUE | Need 6+ principle references (P1-P12 + PASS/FAIL). Found $TOTAL_PRINCIPLE_EVIDENCE."
 fi
-
-# Store critique output for Reflexion memory extraction
-echo "" >> "$STATE_FILE"
-echo "<!-- CRITIQUE_ROUND_${CRITIQUE_NUM} -->" >> "$STATE_FILE"
-printf '%s\n' "$LAST_OUTPUT" >> "$STATE_FILE"
-echo "<!-- /CRITIQUE_ROUND_${CRITIQUE_NUM} -->" >> "$STATE_FILE"
 
 # Critique passed — advance to revise
 advance_phase

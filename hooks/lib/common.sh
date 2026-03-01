@@ -43,13 +43,13 @@ block_with() {
 get_section_pattern() {
   local section="$1"
   case "$section" in
-    Goal)             echo "(Goal|목표)" ;;
-    Scope)            echo "(Scope|범위)" ;;
-    Non-Scope)        echo "(Non-Scope|Non Scope|비범위)" ;;
-    Steps)            echo "(Steps|단계별 계획|단계별|단계)" ;;
-    Verification)     echo "(Verification|검증)" ;;
-    Risks)            echo "(Risks|Risk|리스크)" ;;
-    "Open Questions") echo "(Open Questions|Open Question|오픈 질문)" ;;
+    Goal)             echo "(Goal)" ;;
+    Scope)            echo "(Scope)" ;;
+    Non-Scope)        echo "(Non-Scope|Non Scope)" ;;
+    Steps)            echo "(Steps)" ;;
+    Verification)     echo "(Verification)" ;;
+    Risks)            echo "(Risks|Risk)" ;;
+    "Open Questions") echo "(Open Questions|Open Question)" ;;
     *)                echo "(${section})" ;;
   esac
 }
