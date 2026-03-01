@@ -39,7 +39,7 @@ Default flow: 8 phases with 2 critique-revise cycles.
 | Phase | What Claude does | What's validated |
 |-------|-----------------|-----------------|
 | **Understand** | Analyzes the problem, defines success criteria/constraints/assumptions | 3+ numbered items, 2+ understanding keywords, no plan headings |
-| **Explore** | Reads codebase, lists files/architecture/patterns. Past session learnings injected (Reflexion). | Must NOT contain plan headings (`## Goal`, etc.) |
+| **Explore** | Reads codebase, lists files/architecture/patterns. Past session learnings injected (Reflexion). | 2+ file path references. Must NOT contain plan headings. |
 | **Alternatives** | Compares 2-3 approaches with pros/cons, chooses one | 2+ options, recommendation keyword, pros/cons keyword |
 | **Draft** | Writes complete plan with all 7 required sections. Steps ordered simple → complex (Least-to-Most). | All section headings must be present |
 | **Critique (×2)** | Evaluates plan against 12 principles (P1-P12) with PASS/FAIL. Perspective rotates per round: technical → maintainability. | Must NOT contain `<promise>` tag. 3+ numbered items, 6+ principle references. |
@@ -264,6 +264,7 @@ Uses a separate state file (`.claude/plansmith.local.md`) from the official `ral
 plansmith/
 ├── commands/           # Slash command definitions (plan, cancel, help)
 ├── hooks/
+│   ├── hooks.json      # Hook registration (stop, pretooluse)
 │   ├── stop-hook.sh    # Phase machine dispatcher
 │   ├── pretooluse-hook.sh  # Tool blocking during planning
 │   ├── lib/common.sh   # Shared helper functions
