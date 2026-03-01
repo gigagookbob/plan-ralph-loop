@@ -10,7 +10,7 @@
 # Example: phases="...,draft(3),critique(4),revise(5),critique(6),..."
 #   At PHASE_INDEX=4: head -n 5 -> counts 1 critique (first round)
 #   At PHASE_INDEX=6: head -n 7 -> counts 2 critiques (second round)
-CRITIQUE_NUM=$(echo "$PHASES_STR" | tr ',' '\n' | head -n $((PHASE_INDEX + 1)) | grep -c '^critique$' || echo 0)
+CRITIQUE_NUM=$(echo "$PHASES_STR" | tr ',' '\n' | head -n $((PHASE_INDEX + 1)) | grep -c '^critique$' || true)
 
 case "$CRITIQUE_NUM" in
   1) CRITIQUE_PERSPECTIVE="Critique from a TECHNICAL perspective: implementation correctness, edge cases, dependency ordering, error handling, performance implications." ;;

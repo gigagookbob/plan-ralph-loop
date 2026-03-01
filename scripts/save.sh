@@ -61,8 +61,12 @@ if [[ "$EXIT_REASON" == "completed" ]] && [[ "$USE_MEMORY" == "true" ]] && [[ -f
     fi
 
     if [[ -n "$FAIL_ITEMS" ]]; then
-      # Get original prompt (first non-empty line after second ---)
-      ORIGINAL_TASK=$(awk '/^---$/{i++; next} i>=2 && NF{print; exit}' "$STATE_FILE")
+      # Extract prompt between markers (same pattern as stop-hook.sh:121)
+      ORIGINAL_TASK=$(sed -n '/<!-- PROMPT -->/,/<!-- \/PROMPT -->/{//d; p;}' "$STATE_FILE" | head -1)
+      # Fallback for old-format state files without markers
+      if [[ -z "$ORIGINAL_TASK" ]]; then
+        ORIGINAL_TASK=$(awk '/^---$/{i++; next} i>=2 && NF{print; exit}' "$STATE_FILE")
+      fi
 
       # Get critique mode for context
       CRITIQUE_MODE_VAL=$(echo "$STATE_FM" | grep '^critique_mode:' | sed 's/critique_mode: *//' | sed 's/^"\(.*\)"$/\1/')

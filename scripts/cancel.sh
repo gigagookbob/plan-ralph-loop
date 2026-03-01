@@ -20,7 +20,12 @@ FRONTMATTER=$(sed -n '/^---$/,/^---$/{ /^---$/d; p; }' "$STATE_FILE")
 PHASE=$(echo "$FRONTMATTER" | grep '^phase:' | sed 's/phase: *//')
 PHASE_INDEX=$(echo "$FRONTMATTER" | grep '^phase_index:' | sed 's/phase_index: *//')
 
-# Deactivate
-sed_inplace 's/^active: true/active: false/' "$STATE_FILE"
+# Check current state before deactivating
+ACTIVE=$(echo "$FRONTMATTER" | grep '^active:' | awk '{print $2}')
 
-echo "Planning loop cancelled (was at phase: ${PHASE:-unknown}, index: ${PHASE_INDEX:-unknown})."
+if [[ "$ACTIVE" == "true" ]]; then
+  sed_inplace 's/^active: true/active: false/' "$STATE_FILE"
+  echo "Planning loop cancelled (was at phase: ${PHASE:-unknown}, index: ${PHASE_INDEX:-unknown})."
+else
+  echo "No active planning loop (last phase: ${PHASE:-unknown}, index: ${PHASE_INDEX:-unknown})."
+fi

@@ -55,7 +55,10 @@ completion_promise: "PLAN_OK"
 block_tools: true
 required_sections: "Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
 ---
+
+<!-- PROMPT -->
 Build a new feature for X.
+<!-- /PROMPT -->
 
 ## Critique Principles
 
