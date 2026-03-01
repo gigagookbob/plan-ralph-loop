@@ -161,6 +161,7 @@ Plansmith는 토큰을 많이 씁니다 — 8단계 루프 + 검증 재시도로
 | 옵션 | 기본값 | 설명 |
 |------|--------|------|
 | `--max-phases <n>` | 10 | 자동 중단까지 최대 단계 전환 수 |
+| `--max-iterations <n>` | 10 | `--max-phases`의 별칭 |
 | `--refine-iterations <n>` | 2 | 비판-수정 사이클 횟수, 1-4 (Self-Refine) |
 | `--skip-understand` | (이해 ON) | 이해 단계 건너뛰기 |
 | `--skip-explore` | (탐색 ON) | 탐색 단계 건너뛰기 |
@@ -270,7 +271,7 @@ plansmith/
 │   └── phases/         # 단계별 검증 (understand, explore, ...)
 ├── scripts/            # 설정, 저장, 취소 스크립트
 ├── templates/          # 계획 품질 루브릭 + 12개 비평 원칙
-└── tests/              # 단계 검증 단위 테스트 (36개)
+└── tests/              # 단계 검증 테스트 (36 단위 + 28 통합)
 ```
 
 ## 요구 사항

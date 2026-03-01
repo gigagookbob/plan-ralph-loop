@@ -25,6 +25,9 @@ PHASES_EXPLICIT="false"
 REFINE_ITERATIONS=2
 CRITIQUE_MODE="principles"
 USE_MEMORY="true"
+SKIP_UNDERSTAND="false"
+SKIP_EXPLORE="false"
+SKIP_ALTERNATIVES="false"
 
 # --- Parse arguments ---
 while [[ $# -gt 0 ]]; do
@@ -126,15 +129,15 @@ HELP_EOF
       shift
       ;;
     --skip-understand)
-      PHASES=$(echo "$PHASES" | sed -E 's/understand,?//' | sed 's/^,//')
+      SKIP_UNDERSTAND="true"
       shift
       ;;
     --skip-explore)
-      PHASES=$(echo "$PHASES" | sed -E 's/explore,?//' | sed 's/^,//')
+      SKIP_EXPLORE="true"
       shift
       ;;
     --skip-alternatives)
-      PHASES=$(echo "$PHASES" | sed -E 's/alternatives,?//' | sed 's/^,//')
+      SKIP_ALTERNATIVES="true"
       shift
       ;;
     --no-block-tools)
@@ -184,6 +187,17 @@ if [[ "$PHASES_EXPLICIT" != "true" ]]; then
   for ((i=1; i<=REFINE_ITERATIONS; i++)); do
     PHASES="${PHASES},critique,revise"
   done
+fi
+
+# Apply --skip-* flags after dynamic building
+if [[ "$SKIP_UNDERSTAND" == "true" ]]; then
+  PHASES=$(echo "$PHASES" | sed -E 's/understand,?//' | sed 's/^,//')
+fi
+if [[ "$SKIP_EXPLORE" == "true" ]]; then
+  PHASES=$(echo "$PHASES" | sed -E 's/explore,?//' | sed 's/^,//')
+fi
+if [[ "$SKIP_ALTERNATIVES" == "true" ]]; then
+  PHASES=$(echo "$PHASES" | sed -E 's/alternatives,?//' | sed 's/^,//')
 fi
 
 # Strip leading/trailing commas (defensive)

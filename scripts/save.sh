@@ -50,26 +50,38 @@ if [[ "$EXIT_REASON" == "completed" ]] && [[ "$USE_MEMORY" == "true" ]] && [[ -f
   CRITIQUES=$(sed -n '/<!-- CRITIQUE_ROUND/,/<!-- \/CRITIQUE_ROUND/p' "$STATE_FILE" | grep -vE '<!-- /?CRITIQUE_ROUND' || true)
 
   if [[ -n "$CRITIQUES" ]]; then
-    # Extract FAIL items from principle-based critiques
-    FAIL_ITEMS=$(echo "$CRITIQUES" | grep -iE '(FAIL|weakness|issue|problem|missing)' | head -10 || true)
+    # Tier 1: principle-based critique lines (P1 FAIL, P3 FAIL, etc.)
+    # Preserves P-number context for actionable memory.
+    FAIL_ITEMS=$(echo "$CRITIQUES" | grep -E '^\s*[0-9]+\.\s+P[0-9]+.*FAIL' | head -10 || true)
+
+    if [[ -z "$FAIL_ITEMS" ]]; then
+      # Tier 2: open-ended critique fallback (tighter pattern).
+      # Word boundary for FAIL, colon after keywords to reduce false positives.
+      FAIL_ITEMS=$(echo "$CRITIQUES" | grep -iE '\bFAIL\b|weakness:|issue:|problem:' | head -10 || true)
+    fi
 
     if [[ -n "$FAIL_ITEMS" ]]; then
       # Get original prompt (first non-empty line after second ---)
       ORIGINAL_TASK=$(awk '/^---$/{i++; next} i>=2 && NF{print; exit}' "$STATE_FILE")
+
+      # Get critique mode for context
+      CRITIQUE_MODE_VAL=$(echo "$STATE_FM" | grep '^critique_mode:' | sed 's/critique_mode: *//' | sed 's/^"\(.*\)"$/\1/')
+      CRITIQUE_MODE_VAL="${CRITIQUE_MODE_VAL:-principles}"
 
       cat >> "$MEMORY_FILE" <<MEMORY_EOF
 
 ---
 ### $TIMESTAMP
 **Task**: $ORIGINAL_TASK
+**Mode**: $CRITIQUE_MODE_VAL
 **Issues found**:
 $FAIL_ITEMS
 MEMORY_EOF
       echo "Session learnings saved to: $MEMORY_FILE" >&2
 
       # Cap memory file to prevent unbounded growth.
-      # Each session ≈ 5-8 lines. 100 lines ≈ 12-20 sessions.
-      # Read side (understand.sh) uses tail -30, so 100 is more than sufficient.
+      # Each session ≈ 6-10 lines. 100 lines ≈ 10-16 sessions.
+      # Read side (understand.sh) uses tail -50, so 100 is more than sufficient.
       MAX_MEMORY_LINES=100
       CURRENT_LINES=$(wc -l < "$MEMORY_FILE" | tr -d ' ')
       if [[ "$CURRENT_LINES" -gt "$MAX_MEMORY_LINES" ]]; then
