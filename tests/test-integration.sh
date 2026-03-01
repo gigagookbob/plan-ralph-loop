@@ -205,7 +205,16 @@ test_setup() {
   assert_equals "--refine-iterations 5: exit 1" "1" "$exit_code"
   cleanup_tmpdir
 
-  # Test 7: Double comma in --phases is sanitized
+  # Test 7: Empty phases after sanitization gives error
+  setup_tmpdir
+  cd "$TEST_TMPDIR"
+  exit_code=0
+  CLAUDE_PLUGIN_ROOT="$PROJECT_ROOT" bash "$PROJECT_ROOT/scripts/setup.sh" \
+    "Plan X" --phases "," 2>/dev/null || exit_code=$?
+  assert_equals "--phases ',': exit 1" "1" "$exit_code"
+  cleanup_tmpdir
+
+  # Test 8: Double comma in --phases is sanitized
   setup_tmpdir
   cd "$TEST_TMPDIR"
   CLAUDE_PLUGIN_ROOT="$PROJECT_ROOT" bash "$PROJECT_ROOT/scripts/setup.sh" \
@@ -350,7 +359,19 @@ test_pretooluse_hook() {
   assert_equals "git log: allowed" "" "$output"
   cleanup_tmpdir
 
-  # Test 8: Plugin script with compound command blocked
+  # Test 8: Multiline command blocked
+  setup_tmpdir
+  create_state_file "draft" 3
+  local multiline_cmd
+  multiline_cmd=$(printf 'ls\nrm -rf /')
+  hook_input=$(jq -n --arg cmd "$multiline_cmd" \
+    '{"tool_name": "Bash", "tool_input": {"command": $cmd}}')
+  output=$(cd "$TEST_TMPDIR" && echo "$hook_input" | \
+    CLAUDE_PLUGIN_ROOT="$PROJECT_ROOT" bash "$PROJECT_ROOT/hooks/pretooluse-hook.sh" 2>/dev/null) || true
+  assert_contains "Multiline command: denied" "deny" "$output"
+  cleanup_tmpdir
+
+  # Test 9: Plugin script with compound command blocked
   setup_tmpdir
   create_state_file "draft" 3
   hook_input=$(jq -n --arg cmd "$PROJECT_ROOT/scripts/setup.sh && rm -rf /" \

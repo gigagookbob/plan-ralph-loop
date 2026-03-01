@@ -57,6 +57,7 @@ Key insights:
 - **Negative validation** (checking what must NOT be in the output) prevents Claude from collapsing phases together
 - **Perspective rotation** for repeated critique phases (technical → maintainability; devil's advocate는 3회차 이상에서만, `--refine-iterations 3+`)
 - **Principle-based critique** (Constitutional AI): 12 enumerable principles with PASS/FAIL evaluation
+- **Aspirational prompts vs. minimum validators**: Prompts aim high (e.g., "8 of 12 principles, 3 FAILs") while validators enforce a minimum floor (e.g., 6 evidence points). This intentional gap avoids over-strict gating while encouraging thorough output.
 - **Multi-iteration** (Self-Refine): critique-revise cycles repeated 2× by default (configurable 1-4 via `--refine-iterations`). Phase sequence built dynamically: `understand,explore,alternatives,draft` + `(critique,revise)×N`. Overridden when `--phases` is explicit.
 - **Session memory** (Reflexion): FAIL items from past sessions stored in `.claude/plansmith-memory.local.md` and injected into explore phase. Controlled by `--no-memory` / `--clear-memory`.
 
@@ -130,3 +131,4 @@ System tools only (no npm/pip):
 - Prompt containing `---` on its own line breaks YAML frontmatter parsing
 - Bash allowlist allows quoted special chars (e.g., `grep 'a&b'`), but unclosed quotes or complex escape patterns may still be blocked
 - `--completion-promise` values with double quotes may break YAML parsing
+- Bash allowlist includes `git branch/remote/tag` which can mutate state with arguments (e.g., `git branch new-name`). In practice, Claude does not create branches during planning, but the check is command-level not argument-level.
