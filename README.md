@@ -1,5 +1,3 @@
-[한국어](README.ko.md)
-
 # plansmith
 
 A structured planning plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Progresses through phases — understand, explore, alternatives, draft, critique, revise — with validation at each step to produce high-quality implementation plans. Default: 8 phases with 2 critique-revise cycles.
@@ -22,7 +20,6 @@ The fix: **force different work at each stage.** Explore the code before plannin
 |-----------|-------|-----------------|
 | **Multi-iteration refinement** | [Self-Refine](https://arxiv.org/abs/2303.17651) (NeurIPS 2023) | Default 2 critique-revise cycles (`--refine-iterations`) |
 | **Principle-based critique** | [Constitutional AI](https://arxiv.org/abs/2212.08073) (Anthropic) | 12 principles (P1-P12) with PASS/FAIL evaluation |
-| **Session memory** | [Reflexion](https://arxiv.org/abs/2303.11366) (NeurIPS 2023) | FAIL items persist across planning sessions |
 | **Step decomposition** | [Least-to-Most](https://arxiv.org/abs/2205.10625) (ICLR 2023) | Steps ordered simple → complex with explicit dependencies |
 | **Structured planning activation** | [LLMs Can Plan Only If We Tell Them](https://arxiv.org/abs/2501.13545) (ICLR 2025) | Phase-based prompting activates latent planning capabilities |
 | **Test-time compute scaling** | [Scaling Test-Time Compute](https://arxiv.org/abs/2408.03314) (ICLR 2025 Oral) | Multi-phase inference outperforms larger single-shot models |
@@ -39,10 +36,10 @@ Default flow: 8 phases with 2 critique-revise cycles.
 | Phase | What Claude does | What's validated |
 |-------|-----------------|-----------------|
 | **Understand** | Analyzes the problem, defines success criteria/constraints/assumptions | 3+ numbered items, 2+ understanding keywords, no plan headings |
-| **Explore** | Reads codebase, lists files/architecture/patterns. Past session learnings injected (Reflexion). | 2+ file path references. Must NOT contain plan headings. |
+| **Explore** | Reads codebase, lists files/architecture/patterns | 2+ file path references. Must NOT contain plan headings. |
 | **Alternatives** | Compares 2-3 approaches with pros/cons, chooses one | 2+ options, recommendation keyword, pros/cons keyword |
 | **Draft** | Writes complete plan with all 7 required sections. Steps ordered simple → complex (Least-to-Most). | All section headings must be present |
-| **Critique (×2)** | Evaluates plan against 12 principles (P1-P12) with PASS/FAIL. Perspective rotates per round: technical → maintainability. | Must NOT contain `<promise>` tag. 3+ numbered items, 6+ principle evidence (P-refs + PASS/FAIL combined). |
+| **Critique (×2)** | Evaluates plan against 12 principles (P1-P12) with PASS/FAIL | Must NOT contain `<promise>` tag. 3+ numbered items, 6+ principle evidence. |
 | **Revise (×2)** | Rewrites plan addressing every critique item | Promise tag + all sections = done (final round only) |
 
 Each phase produces different output because the validation prevents collapsing phases together.
@@ -66,11 +63,8 @@ When complete, the final plan is saved to `.claude/plansmith-output.local.md`.
 # Fewer iterations for simpler tasks
 /plansmith:plan Fix the bug --refine-iterations 1
 
-# Skip understand+explore when problem and code are known
-/plansmith:plan Plan the refactor --skip-understand --skip-explore
-
-# Use open-ended critique instead of principle-based
-/plansmith:plan Design caching --open-critique
+# More iterations for complex tasks
+/plansmith:plan Design caching layer --refine-iterations 3
 
 # Cancel if needed
 /plansmith:cancel
@@ -87,7 +81,6 @@ Once you run `/plansmith:plan`, the loop runs automatically — no manual interv
 | **Tool blocking** | None (full access) | Edit/Write/Bash blocked during planning |
 | **Self-critique** | Optional | Dedicated critique phase with 12 principles (cannot skip) |
 | **Iteration** | Until tests pass | Configurable critique-revise cycles (Self-Refine) |
-| **Memory** | None | Session memory across runs (Reflexion) |
 | **Output** | Modified files | Saved plan file (`.claude/plansmith-output.local.md`) |
 
 ## Plansmith vs Plan Mode — Real-World Comparison
@@ -164,16 +157,7 @@ Plansmith uses significantly more tokens than single-shot planning — the 8-pha
 | `--max-phases <n>` | 10 | Maximum phase transitions before auto-stop |
 | `--max-iterations <n>` | 10 | Alias for `--max-phases` |
 | `--refine-iterations <n>` | 2 | Critique-revise cycles, 1-4 (Self-Refine) |
-| `--skip-understand` | (understand ON) | Skip the understand phase |
-| `--skip-explore` | (explore ON) | Skip the explore phase |
-| `--skip-alternatives` | (alternatives ON) | Skip the alternatives phase |
-| `--open-critique` | (principles ON) | Open-ended critique instead of principle-based |
-| `--no-memory` | (memory ON) | Disable session memory (Reflexion) |
-| `--clear-memory` | — | Clear accumulated session memories |
-| `--phases "a,b,c"` | (dynamic) | Custom phase sequence (overrides --refine-iterations) |
 | `--no-block-tools` | (blocking ON) | Disable tool blocking |
-| `--required-sections "A,B,C"` | Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions | Required section headings |
-| `--completion-promise <text>` | PLAN_OK | Promise tag value |
 
 ### `/plansmith:cancel`
 
@@ -192,17 +176,7 @@ The **revise** phase uses a 2-phase quality gate:
 
 ### Default Required Sections
 
-Section headings are accepted in **both English and Korean** — you can write your entire plan in Korean if you prefer.
-
-| English | Korean |
-|---------|--------|
-| `## Goal` | `## 목표` |
-| `## Scope` | `## 범위` |
-| `## Non-Scope` | `## 비범위` |
-| `## Steps` | `## 단계별 계획` |
-| `## Verification` | `## 검증` |
-| `## Risks` | `## 리스크` |
-| `## Open Questions` | `## 오픈 질문` |
+`Goal`, `Scope`, `Non-Scope`, `Steps`, `Verification`, `Risks`, `Open Questions`
 
 ## Tool Blocking
 
@@ -226,7 +200,6 @@ Use `--no-block-tools` to disable.
 
 **Not good for:**
 - Simple, well-defined tasks (just do them directly)
-- Tasks with no codebase to explore (use `--skip-explore`)
 - When you already have a clear plan
 
 ## Output
@@ -235,7 +208,6 @@ When the loop completes, the final plan is saved with `<promise>` tags stripped:
 
 ```
 .claude/plansmith-output.local.md        — final plan
-.claude/plansmith-memory.local.md        — session memory (Reflexion, persists across runs)
 ```
 
 The plan file includes YAML frontmatter with metadata:
@@ -253,7 +225,6 @@ If the loop hits `--max-phases` before completion, the current output is still s
 
 - **Prompt containing `---`**: May break YAML frontmatter parsing. Avoid `---` on its own line in prompts.
 - **Tool blocking is conservative**: `&`, `>`, `|`, `;` in Bash arguments are blocked. Use `--no-block-tools` if needed.
-- **Completion promise with quotes**: Avoid `"` in `--completion-promise` values.
 
 ## Compatibility
 
@@ -272,7 +243,7 @@ plansmith/
 │   └── phases/         # Per-phase validation (understand, explore, ...)
 ├── scripts/            # Setup, save, cancel scripts
 ├── templates/          # Plan rubric + 12 critique principles
-└── tests/              # Phase validation tests (44 unit + 40 integration)
+└── tests/              # Phase validation tests (35 unit + 29 integration)
 ```
 
 ## Requirements
