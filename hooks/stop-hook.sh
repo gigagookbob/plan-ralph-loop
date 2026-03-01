@@ -2,7 +2,7 @@
 
 # Plansmith Stop Hook
 # Prevents session exit when a plansmith is active.
-# Implements a phase machine: explore → draft → critique → revise → iterate
+# Implements a phase machine: understand → explore → alternatives → draft → critique → revise → iterate
 # Each phase has distinct validation and prompts.
 
 # Prevent bash.exe.stackdump on MSYS2/Git Bash (Windows)

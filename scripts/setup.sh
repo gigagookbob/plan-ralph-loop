@@ -2,7 +2,7 @@
 
 # Plansmith Setup Script
 # Parses CLI arguments and creates the state file for in-session planning loop.
-# Uses a phase machine: explore → draft → critique → revise
+# Uses a phase machine: understand → explore → alternatives → draft → critique → revise → iterate
 
 set -euo pipefail
 
