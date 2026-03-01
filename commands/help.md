@@ -38,6 +38,7 @@ Start a planning loop.
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--max-phases N` | 10 | Maximum phase transitions |
+| `--max-iterations N` | 10 | Alias for `--max-phases` |
 | `--refine-iterations N` | 2 | Critique-revise cycles, 1-4 (Self-Refine) |
 | `--skip-understand` | (understand ON) | Skip the understand phase |
 | `--skip-explore` | (explore ON) | Skip the explore phase |

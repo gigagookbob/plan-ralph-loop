@@ -162,6 +162,7 @@ Plansmith uses significantly more tokens than single-shot planning — the 8-pha
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--max-phases <n>` | 10 | Maximum phase transitions before auto-stop |
+| `--max-iterations <n>` | 10 | Alias for `--max-phases` |
 | `--refine-iterations <n>` | 2 | Critique-revise cycles, 1-4 (Self-Refine) |
 | `--skip-understand` | (understand ON) | Skip the understand phase |
 | `--skip-explore` | (explore ON) | Skip the explore phase |
@@ -271,7 +272,7 @@ plansmith/
 │   └── phases/         # Per-phase validation (understand, explore, ...)
 ├── scripts/            # Setup, save, cancel scripts
 ├── templates/          # Plan rubric + 12 critique principles
-└── tests/              # Phase validation unit tests (36 cases)
+└── tests/              # Phase validation tests (36 unit + 28 integration)
 ```
 
 ## Requirements

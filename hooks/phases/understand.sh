@@ -52,7 +52,7 @@ advance_phase
 # Reflexion: inject session memory if available
 MEMORY_INJECT=""
 if [[ "$USE_MEMORY" == "true" ]] && [[ -f "$PROJECT_DIR/.claude/plansmith-memory.local.md" ]]; then
-  MEMORY_CONTEXT=$(tail -30 "$PROJECT_DIR/.claude/plansmith-memory.local.md")
+  MEMORY_CONTEXT=$(tail -50 "$PROJECT_DIR/.claude/plansmith-memory.local.md")
   if [[ -n "$MEMORY_CONTEXT" ]]; then
     MEMORY_INJECT="
 
