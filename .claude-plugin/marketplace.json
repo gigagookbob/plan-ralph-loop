@@ -1,17 +1,17 @@
 {
-  "name": "plansmith-local",
+  "name": "zerorder",
   "owner": {
     "name": "gigagookbob"
   },
   "metadata": {
-    "description": "Structured planning for Claude Code — Self-Refine, Constitutional AI, Reflexion, Least-to-Most"
+    "description": "Structured planning for Claude Code — 6-phase planning with principle-based critique and iterative refinement."
   },
   "plugins": [
     {
       "name": "plansmith",
       "source": "./",
-      "description": "Structured planning for Claude Code — multi-iteration critique-revise (Self-Refine), principle-based evaluation (Constitutional AI), session memory (Reflexion), and Least-to-Most step decomposition.",
-      "version": "3.0.3",
+      "description": "Structured planning for Claude Code — 6-phase planning with principle-based critique and iterative refinement.",
+      "version": "4.0.0",
       "author": {
         "name": "gigagookbob"
       },

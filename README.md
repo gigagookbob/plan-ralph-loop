@@ -258,7 +258,7 @@ Add the marketplace and install:
 
 ```shell
 /plugin marketplace add gigagookbob/plansmith
-/plugin install plansmith@plansmith-local
+/plugin install plansmith@zerorder
 ```
 
 To enable for a team project, add to your project's `.claude/settings.json`:
@@ -266,7 +266,7 @@ To enable for a team project, add to your project's `.claude/settings.json`:
 ```json
 {
   "extraKnownMarketplaces": {
-    "plansmith-local": {
+    "zerorder": {
       "source": {
         "source": "github",
         "repo": "gigagookbob/plansmith"
@@ -274,7 +274,7 @@ To enable for a team project, add to your project's `.claude/settings.json`:
     }
   },
   "enabledPlugins": {
-    "plansmith@plansmith-local": true
+    "plansmith@zerorder": true
   }
 }
 ```
