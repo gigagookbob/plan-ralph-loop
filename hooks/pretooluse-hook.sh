@@ -52,6 +52,21 @@ case "$TOOL_NAME" in
     # Allow read-only commands only; block everything else
     COMMAND=$(echo "$HOOK_INPUT" | jq -r '.tool_input.command // empty')
 
+    # Reject multiline commands — each line is checked independently by grep,
+    # so a command like "ls\nrm -rf /" would pass the allowlist on its first line.
+    if [[ "$COMMAND" == *$'\n'* ]]; then
+      jq -n \
+        --arg reason "[plansmith] Multiline commands are blocked during the planning phase. Use a single command per Bash tool call." \
+        '{
+          "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": $reason
+          }
+        }'
+      exit 0
+    fi
+
     # First: reject any compound commands, redirects, pipes, chains, subshells
     # This runs BEFORE the plugin exemption to prevent bypass via:
     #   "/plugin/scripts/setup.sh" && malicious-command
