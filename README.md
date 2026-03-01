@@ -42,7 +42,7 @@ Default flow: 8 phases with 2 critique-revise cycles.
 | **Explore** | Reads codebase, lists files/architecture/patterns. Past session learnings injected (Reflexion). | 2+ file path references. Must NOT contain plan headings. |
 | **Alternatives** | Compares 2-3 approaches with pros/cons, chooses one | 2+ options, recommendation keyword, pros/cons keyword |
 | **Draft** | Writes complete plan with all 7 required sections. Steps ordered simple → complex (Least-to-Most). | All section headings must be present |
-| **Critique (×2)** | Evaluates plan against 12 principles (P1-P12) with PASS/FAIL. Perspective rotates per round: technical → maintainability. | Must NOT contain `<promise>` tag. 3+ numbered items, 6+ principle references. |
+| **Critique (×2)** | Evaluates plan against 12 principles (P1-P12) with PASS/FAIL. Perspective rotates per round: technical → maintainability. | Must NOT contain `<promise>` tag. 3+ numbered items, 6+ principle evidence (P-refs + PASS/FAIL combined). |
 | **Revise (×2)** | Rewrites plan addressing every critique item | Promise tag + all sections = done (final round only) |
 
 Each phase produces different output because the validation prevents collapsing phases together.

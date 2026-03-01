@@ -204,6 +204,16 @@ test_setup() {
   CLAUDE_PLUGIN_ROOT="$PROJECT_ROOT" bash "$PROJECT_ROOT/scripts/setup.sh" "Plan Z" --refine-iterations 5 2>/dev/null || exit_code=$?
   assert_equals "--refine-iterations 5: exit 1" "1" "$exit_code"
   cleanup_tmpdir
+
+  # Test 7: Double comma in --phases is sanitized
+  setup_tmpdir
+  cd "$TEST_TMPDIR"
+  CLAUDE_PLUGIN_ROOT="$PROJECT_ROOT" bash "$PROJECT_ROOT/scripts/setup.sh" \
+    "Plan Z" --phases "understand,,explore,,draft" > /dev/null 2>&1
+  phases=$(get_state_value "$TEST_TMPDIR/.claude/plansmith.local.md" "phases")
+  assert_equals "--phases with double commas: sanitized" \
+    "understand,explore,draft" "$phases"
+  cleanup_tmpdir
 }
 
 # ============================================================
@@ -338,6 +348,16 @@ test_pretooluse_hook() {
   output=$(cd "$TEST_TMPDIR" && echo "$hook_input" | \
     CLAUDE_PLUGIN_ROOT="$PROJECT_ROOT" bash "$PROJECT_ROOT/hooks/pretooluse-hook.sh" 2>/dev/null) || true
   assert_equals "git log: allowed" "" "$output"
+  cleanup_tmpdir
+
+  # Test 8: Plugin script with compound command blocked
+  setup_tmpdir
+  create_state_file "draft" 3
+  hook_input=$(jq -n --arg cmd "$PROJECT_ROOT/scripts/setup.sh && rm -rf /" \
+    '{"tool_name": "Bash", "tool_input": {"command": $cmd}}')
+  output=$(cd "$TEST_TMPDIR" && echo "$hook_input" | \
+    CLAUDE_PLUGIN_ROOT="$PROJECT_ROOT" bash "$PROJECT_ROOT/hooks/pretooluse-hook.sh" 2>/dev/null) || true
+  assert_contains "Plugin script + compound: denied" "deny" "$output"
   cleanup_tmpdir
 }
 

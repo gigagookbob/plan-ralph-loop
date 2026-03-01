@@ -2,7 +2,7 @@
 
 # Plansmith Setup Script
 # Parses CLI arguments and creates the state file for in-session planning loop.
-# Uses a phase machine: understand → explore → alternatives → draft → critique → revise → iterate
+# Phase machine: understand → explore → alternatives → draft → (critique → revise) × N
 
 set -euo pipefail
 
@@ -69,7 +69,7 @@ PHASES:
   draft        Write complete plan with all required sections
   critique     Self-critique: list numbered weaknesses (no rewriting)
   revise       Rewrite plan addressing critique items, can finalize
-  iterate      Further critique+revision cycles if needed
+  iterate      (fallback) Further revision if no more critique rounds remain
 
 EXAMPLES:
   /plansmith:plan Design the authentication system --max-phases 12
@@ -201,7 +201,7 @@ if [[ "$SKIP_ALTERNATIVES" == "true" ]]; then
 fi
 
 # Strip leading/trailing commas (defensive)
-PHASES=$(echo "$PHASES" | sed 's/^,//; s/,$//')
+PHASES=$(echo "$PHASES" | sed 's/,,*/,/g; s/^,//; s/,$//')
 
 # Ensure .claude directory exists
 mkdir -p .claude

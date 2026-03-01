@@ -71,7 +71,7 @@ Cancel an active planning loop.
 | explore | 2+ file path references, no plan headings | Plan headings found, or no file references |
 | alternatives | 2+ options, recommendation keyword, pros/cons keyword, no promise/plan headings | Missing options, recommendation, or trade-off analysis |
 | draft | All required section headings present | Sections missing |
-| critique | 3+ numbered items, no `<promise>` tag, 6+ principle refs (principles mode) | Fewer than 3 items, promise present, or insufficient principle evaluation |
+| critique | 3+ numbered items, no `<promise>` tag, 6+ principle evidence (P-refs + PASS/FAIL combined, principles mode) | Fewer than 3 items, promise present, or insufficient principle evaluation |
 | revise | Promise tag + all sections (final round only) | Promise missing or sections missing |
 
 ## Tool Blocking
