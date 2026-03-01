@@ -432,6 +432,18 @@ Fix authentication.
 <promise>PLAN_OK</promise>"
   run_phase "revise.sh" || true
   assert_blocked "Blocks when promise present but sections missing" "Missing sections"
+  # B1 regression: phase must NOT advance when sections are missing
+  local revise_phase
+  revise_phase=$(grep '^phase: ' "$TEST_TMPDIR/.claude/plansmith.local.md" | sed 's/phase: //')
+  local revise_index
+  revise_index=$(grep '^phase_index: ' "$TEST_TMPDIR/.claude/plansmith.local.md" | sed 's/phase_index: //')
+  if [[ "$revise_phase" == "revise" ]] && [[ "$revise_index" == "7" ]]; then
+    echo -e "  ${GREEN}PASS${RESET}: Phase stays as revise (no spurious advance)"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    echo -e "  ${RED}FAIL${RESET}: Phase should stay revise/7, got $revise_phase/$revise_index"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
   cleanup_tmpdir
 
   # Test 4: Pass when promise + all sections present
@@ -806,6 +818,71 @@ test_skip_transitions() {
   run_phase "explore.sh" || true
   assert_blocked "explore → draft (alternatives skipped)" "DRAFT"
   cleanup_tmpdir
+
+  # Test 4: alternatives → non-draft (R3 regression: dynamic dispatch)
+  setup_tmpdir
+  setup_env "alternatives" 1 "1. Option A: Refactor the auth module
+   Pros: cleaner code, better testability
+   Cons: more work upfront
+
+2. Option B: Patch the existing code
+   Pros: faster to implement
+   Cons: technical debt
+
+I recommend Option A because the pros outweigh the cons long-term."
+  override_phases "understand,alternatives,critique,revise"
+  run_phase "alternatives.sh" || true
+  assert_blocked "alternatives → critique (draft skipped)" "next phase"
+  cleanup_tmpdir
+}
+
+# --- sed_inplace failure cleanup test ---
+
+test_sed_inplace_failure() {
+  echo -e "\n${BOLD}=== sed_inplace failure cleanup ===${RESET}"
+
+  setup_tmpdir
+  source "$PROJECT_ROOT/hooks/lib/common.sh"
+
+  # Create a test file
+  echo "hello world" > "$TEST_TMPDIR/testfile.txt"
+
+  # Call sed_inplace with an invalid pattern — capture exit code
+  local exit_code=0
+  sed_inplace '[invalid' "$TEST_TMPDIR/testfile.txt" 2>/dev/null || exit_code=$?
+
+  # Verify no orphan temp files remain
+  local orphans
+  orphans=$(find "$TEST_TMPDIR" -name "testfile.txt.tmp.*" 2>/dev/null | wc -l | tr -d ' ')
+  if [[ "$orphans" == "0" ]]; then
+    echo -e "  ${GREEN}PASS${RESET}: No orphan temp files after sed failure"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    echo -e "  ${RED}FAIL${RESET}: Found $orphans orphan temp file(s)"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+
+  # Verify original file is unchanged
+  local content
+  content=$(cat "$TEST_TMPDIR/testfile.txt")
+  if [[ "$content" == "hello world" ]]; then
+    echo -e "  ${GREEN}PASS${RESET}: Original file unchanged after sed failure"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    echo -e "  ${RED}FAIL${RESET}: Original file corrupted: '$content'"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+
+  # Verify non-zero exit code returned
+  if [[ "$exit_code" -ne 0 ]]; then
+    echo -e "  ${GREEN}PASS${RESET}: sed_inplace returns non-zero on failure"
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    echo -e "  ${RED}FAIL${RESET}: Expected non-zero exit code, got 0"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+
+  cleanup_tmpdir
 }
 
 # --- Run all tests ---
@@ -843,6 +920,7 @@ test_state_advancement
 test_dispatcher
 test_skip_phases
 test_skip_transitions
+test_sed_inplace_failure
 
 echo -e "\n${BOLD}=== Results ===${RESET}"
 echo -e "  ${GREEN}Passed: $PASS_COUNT${RESET}"

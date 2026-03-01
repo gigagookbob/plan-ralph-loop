@@ -75,7 +75,6 @@ done
 if [[ ${#MISSING[@]} -gt 0 ]]; then
   MISSING_LIST=$(printf ", %s" "${MISSING[@]}")
   MISSING_LIST=${MISSING_LIST:2}
-  advance_phase
   block_with \
     "[plansmith] $PROGRESS Quality gate: Missing sections — $MISSING_LIST
 

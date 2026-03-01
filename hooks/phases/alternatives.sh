@@ -47,10 +47,14 @@ $PROMPT_TEXT" \
     "Phase: ALTERNATIVES | Need 2+ options, recommendation, and pros/cons analysis."
 fi
 
-# Alternatives passed — advance to draft
+# Alternatives passed — advance to next phase
 advance_phase
-block_with \
-  "[plansmith] $PROGRESS Phase: DRAFT — Now write the plan.
+NEXT_PHASE=$(grep '^phase: ' "$STATE_FILE" | sed 's/phase: *//')
+
+case "$NEXT_PHASE" in
+  draft)
+    block_with \
+      "[plansmith] $PROGRESS Phase: DRAFT — Now write the plan.
 
 Based on the approach you selected, write a complete plan with ALL required sections:
 $REQUIRED_SECTIONS
@@ -69,4 +73,14 @@ Do NOT output <promise>$COMPLETION_PROMISE</promise> yet — there will be a cri
 
 Original request:
 $PROMPT_TEXT" \
-  "Phase: DRAFT | Write the complete plan with all required sections."
+      "Phase: DRAFT | Write the complete plan with all required sections."
+    ;;
+  *)
+    block_with \
+      "[plansmith] $PROGRESS Proceeding to next phase.
+
+Original request:
+$PROMPT_TEXT" \
+      "Proceeding to next phase."
+    ;;
+esac
