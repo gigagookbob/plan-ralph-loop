@@ -49,8 +49,8 @@ MAX_PHASES=$(echo "$FRONTMATTER" | grep '^max_phases:' | sed 's/max_phases: *//'
 COMPLETION_PROMISE=$(echo "$FRONTMATTER" | grep '^completion_promise:' | sed 's/completion_promise: *//' | sed 's/^"\(.*\)"$/\1/')
 REQUIRED_SECTIONS=$(echo "$FRONTMATTER" | grep '^required_sections:' | sed 's/required_sections: *//' | sed 's/^"\(.*\)"$/\1/')
 PHASES_STR=$(echo "$FRONTMATTER" | grep '^phases:' | sed 's/phases: *//' | sed 's/^"\(.*\)"$/\1/')
-CRITIQUE_MODE=$(echo "$FRONTMATTER" | grep '^critique_mode:' | sed 's/critique_mode: *//' | sed 's/^"\(.*\)"$/\1/')
-USE_MEMORY=$(echo "$FRONTMATTER" | grep '^use_memory:' | sed 's/use_memory: *//')
+CRITIQUE_MODE=$(echo "$FRONTMATTER" | grep '^critique_mode:' | sed 's/critique_mode: *//' | sed 's/^"\(.*\)"$/\1/' || true)
+USE_MEMORY=$(echo "$FRONTMATTER" | grep '^use_memory:' | sed 's/use_memory: *//' || true)
 CRITIQUE_MODE="${CRITIQUE_MODE:-principles}"
 USE_MEMORY="${USE_MEMORY:-true}"
 
@@ -125,7 +125,7 @@ TOTAL_PHASES=$(echo "$PHASES_STR" | tr ',' '\n' | grep -c '.' || true)
 PROGRESS="[$((PHASE_INDEX + 1))/$TOTAL_PHASES]"
 
 # --- 8. Phase dispatch ---
-PHASE_DIR="${CLAUDE_PLUGIN_ROOT}/hooks/phases"
+PHASE_DIR="${CLAUDE_PLUGIN_ROOT:-}/hooks/phases"
 if [[ ! -d "$PHASE_DIR" ]]; then
   # Fallback for direct invocation without CLAUDE_PLUGIN_ROOT
   PHASE_DIR="$(cd "$PROJECT_DIR" && cd "$(dirname "$0")" && pwd)/phases"
