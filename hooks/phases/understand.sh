@@ -1,6 +1,5 @@
 # Phase: UNDERSTAND
 # Validates problem analysis output. Advances to next phase on pass.
-# Injects Reflexion session memory when transitioning to explore.
 # Sourced by stop-hook.sh — do not execute directly.
 # shellcheck disable=SC2154
 

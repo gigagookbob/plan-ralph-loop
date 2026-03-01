@@ -9,7 +9,6 @@ plansmith is a Claude Code plugin that progresses through structured planning ph
 **Ideas borrowed from:**
 - [Self-Refine](https://arxiv.org/abs/2303.17651) (NeurIPS 2023) — multi-iteration critique-revise (default: 2 cycles)
 - [Constitutional AI](https://arxiv.org/abs/2212.08073) (Anthropic) — principle-based structured critique (12 principles, PASS/FAIL)
-- [Reflexion](https://arxiv.org/abs/2303.11366) (NeurIPS 2023) — persistent session memory across planning runs
 - [Least-to-Most](https://arxiv.org/abs/2205.10625) (ICLR 2023) — progressive step decomposition in draft phase
 - [LLMs Can Plan Only If We Tell Them](https://arxiv.org/abs/2501.13545) (ICLR 2025) — structured prompting activates latent planning
 - [Scaling Test-Time Compute](https://arxiv.org/abs/2408.03314) (ICLR 2025 Oral) — multi-phase inference > larger models
@@ -28,14 +27,14 @@ Three core mechanisms:
 ```
 /plansmith:plan → setup.sh (creates state file)
   → Phase 1: understand (analyze problem, define success criteria)
-  → Phase 2: explore (read codebase, list findings + Reflexion memory injection)
+  → Phase 2: explore (read codebase, list findings)
   → Phase 3: alternatives (compare approaches, choose one)
   → Phase 4: draft (write complete plan with Least-to-Most step ordering)
-  → Phase 5: critique (principle-based P1-P12 PASS/FAIL, technical perspective)
+  → Phase 5: critique (principle-based P1-P12 PASS/FAIL)
   → Phase 6: revise (address critiques)
-  → Phase 7: critique (round 2, maintainability perspective)
+  → Phase 7: critique (round 2)
   → Phase 8: revise (finalize with promise tag)
-  → save.sh → .claude/plansmith-output.local.md + memory extraction
+  → save.sh → .claude/plansmith-output.local.md
 ```
 
 ### Phase Machine (stop-hook.sh + phases/)
@@ -50,17 +49,15 @@ Each phase has distinct validation:
 | explore | 2+ file path references, no plan headings | Plan headings found (negative validation) |
 | alternatives | 2+ options, recommendation keyword, pros/cons keyword, no promise tag, no plan headings | Missing options, recommendation, or trade-offs |
 | draft | All required section headings present | Sections missing |
-| critique | 3+ numbered items, no `<promise>` tag, 6+ principle evidence (P-refs + PASS/FAIL combined, principles mode; prompt aspires to 8/12 + 3 FAILs) | Promise present (negative validation), <3 items, insufficient principle evaluation |
+| critique | 3+ numbered items, no `<promise>` tag, 6+ principle evidence (P-refs + PASS/FAIL combined; prompt aspires to 8/12 + 3 FAILs) | Promise present (negative validation), <3 items, insufficient principle evaluation |
 | revise | Promise tag + all sections (final round only) | Promise missing or sections missing |
 | iterate | Same as revise (reuses revise.sh via `revise\|iterate` dispatch). Triggered when all critique-revise cycles are exhausted but promise is missing. | Same as revise |
 
 Key insights:
 - **Negative validation** (checking what must NOT be in the output) prevents Claude from collapsing phases together
-- **Perspective rotation** for repeated critique phases (technical → maintainability; devil's advocate only in round 3+, requires `--refine-iterations 3+`)
 - **Principle-based critique** (Constitutional AI): 12 enumerable principles with PASS/FAIL evaluation
 - **Aspirational prompts vs. minimum validators**: Prompts aim high (e.g., "8 of 12 principles, 3 FAILs") while validators enforce a minimum floor (e.g., 6 evidence points). This intentional gap avoids over-strict gating while encouraging thorough output.
-- **Multi-iteration** (Self-Refine): critique-revise cycles repeated 2× by default (configurable 1-4 via `--refine-iterations`). Phase sequence built dynamically: `understand,explore,alternatives,draft` + `(critique,revise)×N`. Overridden when `--phases` is explicit.
-- **Session memory** (Reflexion): FAIL items from past sessions stored in `.claude/plansmith-memory.local.md` and injected into explore phase. Controlled by `--no-memory` / `--clear-memory`.
+- **Multi-iteration** (Self-Refine): critique-revise cycles repeated 2× by default (configurable 1-4 via `--refine-iterations`). Phase sequence always: `understand,explore,alternatives,draft` + `(critique,revise)×N`.
 
 ### State File
 
@@ -72,25 +69,16 @@ phase_index: 0
 max_phases: 10
 phases: "understand,explore,alternatives,draft,critique,revise,critique,revise"
 refine_iterations: 2
-critique_mode: "principles"
-use_memory: true
 completion_promise: "PLAN_OK"
 block_tools: true
 required_sections: "Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
 started_at: "2025-01-01T00:00:00Z"
 ```
 
-State file은 3-layer hybrid 구조:
+State file은 2-layer 구조:
 
 1. **YAML frontmatter** — 설정 (위 예시). `sed`로 파싱, `sed_inplace()`로 업데이트.
-2. **Body** — 각 phase 출력이 축적됨 (understand → explore → ... 순서대로 append)
-3. **HTML comments** — critique 결과 구분자. `save.sh`가 여기서 FAIL 항목을 추출하여 Reflexion memory에 저장.
-
-```
-<!-- CRITIQUE_ROUND_1 -->
-[critique output]
-<!-- /CRITIQUE_ROUND_1 -->
-```
+2. **Body** — 프롬프트 텍스트 + 템플릿 (plan rubric, critique principles)
 
 ### Tool Blocking (pretooluse-hook.sh)
 
@@ -131,5 +119,4 @@ System tools only (no npm/pip):
 
 - Prompt containing `---` on its own line breaks YAML frontmatter parsing
 - Bash allowlist allows quoted special chars (e.g., `grep 'a&b'`), but unclosed quotes or complex escape patterns may still be blocked
-- `--completion-promise` values with double quotes may break YAML parsing
 - Bash allowlist includes `git branch/remote/tag` which can mutate state with arguments (e.g., `git branch new-name`). In practice, Claude does not create branches during planning, but the check is command-level not argument-level.
