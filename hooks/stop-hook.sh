@@ -128,7 +128,7 @@ PROGRESS="[$((PHASE_INDEX + 1))/$TOTAL_PHASES]"
 PHASE_DIR="${CLAUDE_PLUGIN_ROOT:-}/hooks/phases"
 if [[ ! -d "$PHASE_DIR" ]]; then
   # Fallback for direct invocation without CLAUDE_PLUGIN_ROOT
-  PHASE_DIR="$(cd "$PROJECT_DIR" && cd "$(dirname "$0")" && pwd)/phases"
+  PHASE_DIR="$(cd "$(dirname "$0")" && pwd)/phases"
 fi
 
 PHASE_FILE=""

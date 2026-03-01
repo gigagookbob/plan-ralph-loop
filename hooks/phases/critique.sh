@@ -76,7 +76,7 @@ fi
 # Store critique output for Reflexion memory extraction
 echo "" >> "$STATE_FILE"
 echo "<!-- CRITIQUE_ROUND_${CRITIQUE_NUM} -->" >> "$STATE_FILE"
-echo "$LAST_OUTPUT" >> "$STATE_FILE"
+printf '%s\n' "$LAST_OUTPUT" >> "$STATE_FILE"
 echo "<!-- /CRITIQUE_ROUND_${CRITIQUE_NUM} -->" >> "$STATE_FILE"
 
 # Critique passed — advance to revise

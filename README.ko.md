@@ -272,7 +272,7 @@ plansmith/
 │   └── phases/         # 단계별 검증 (understand, explore, ...)
 ├── scripts/            # 설정, 저장, 취소 스크립트
 ├── templates/          # 계획 품질 루브릭 + 12개 비평 원칙
-└── tests/              # 단계 검증 테스트 (36 단위 + 28 통합)
+└── tests/              # 단계 검증 테스트 (36 단위 + 32 통합)
 ```
 
 ## 요구 사항

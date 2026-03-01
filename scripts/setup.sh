@@ -20,7 +20,8 @@ MAX_PHASES=10
 BLOCK_TOOLS="true"
 REQUIRED_SECTIONS="Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
 COMPLETION_PROMISE="PLAN_OK"
-PHASES="understand,explore,alternatives,draft,critique,revise"
+# Built dynamically below: understand,explore,alternatives,draft + (critique,revise)×N
+PHASES=""
 PHASES_EXPLICIT="false"
 REFINE_ITERATIONS=2
 CRITIQUE_MODE="principles"
