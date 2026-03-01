@@ -65,7 +65,7 @@ Key insights:
 `.claude/plansmith.local.md` with YAML frontmatter:
 ```yaml
 active: true
-phase: explore
+phase: understand
 phase_index: 0
 max_phases: 10
 phases: "understand,explore,alternatives,draft,critique,revise,critique,revise"
@@ -75,6 +75,7 @@ use_memory: true
 completion_promise: "PLAN_OK"
 block_tools: true
 required_sections: "Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
+started_at: "2025-01-01T00:00:00Z"
 ```
 
 State file은 3-layer hybrid 구조:
