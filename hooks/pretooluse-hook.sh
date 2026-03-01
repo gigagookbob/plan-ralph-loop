@@ -52,19 +52,9 @@ case "$TOOL_NAME" in
     # Allow read-only commands only; block everything else
     COMMAND=$(echo "$HOOK_INPUT" | jq -r '.tool_input.command // empty')
 
-    # Allow plugin's own scripts (setup, cancel, save-plan)
-    # Normalize path separators and strip quotes for Windows (Git Bash) compatibility
-    PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
-    if [[ -n "$PLUGIN_ROOT" ]]; then
-      NORM_CMD=$(echo "$COMMAND" | tr '\\' '/' | sed "s/^[\"']//" | sed "s/[\"'][[:space:]]*$//")
-      NORM_ROOT=$(echo "$PLUGIN_ROOT" | tr '\\' '/')
-      if echo "$NORM_CMD" | grep -qF "$NORM_ROOT/scripts/"; then
-        exit 0
-      fi
-    fi
-
     # First: reject any compound commands, redirects, pipes, chains, subshells
-    # This prevents bypass like "ls; rm -rf /", "cat foo | xargs rm", "echo x > file"
+    # This runs BEFORE the plugin exemption to prevent bypass via:
+    #   "/plugin/scripts/setup.sh" && malicious-command
     # Strip quoted strings first so special chars inside quotes don't trigger blocking
     UNQUOTED=$(echo "$COMMAND" | sed "s/\\\\['\"]//g" | sed "s/'[^']*'//g" | sed 's/"[^"]*"//g')
     if echo "$UNQUOTED" | grep -qE '[;|&>]|\$\(|`'; then
@@ -78,6 +68,17 @@ case "$TOOL_NAME" in
           }
         }'
       exit 0
+    fi
+
+    # Allow plugin's own scripts (setup, cancel, save-plan)
+    # Normalize path separators and strip quotes for Windows (Git Bash) compatibility
+    PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
+    if [[ -n "$PLUGIN_ROOT" ]]; then
+      NORM_CMD=$(echo "$COMMAND" | tr '\\' '/' | sed "s/^[\"']//" | sed "s/[\"'][[:space:]]*$//")
+      NORM_ROOT=$(echo "$PLUGIN_ROOT" | tr '\\' '/')
+      if echo "$NORM_CMD" | grep -qF "$NORM_ROOT/scripts/"; then
+        exit 0
+      fi
     fi
 
     # Then: check allowlist for single read-only commands
