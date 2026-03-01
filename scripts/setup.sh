@@ -46,8 +46,10 @@ ARGUMENTS:
 OPTIONS:
   --max-phases <n>               Maximum phase transitions (default: 10)
   --max-iterations <n>           Alias for --max-phases
-  --phases "a,b,c,d"             Custom phase sequence
-                                 (default: understand,explore,alternatives,draft,critique,revise)
+  --phases "a,b,c,d"             Custom phase sequence (default: dynamic,
+                                 e.g. understand,explore,alternatives,draft,
+                                 critique,revise,critique,revise for 2 cycles)
+                                 Note: --skip-* flags still apply after --phases
   --refine-iterations <n>        Number of critique-revise cycles, 1-4 (default: 2)
                                  Based on Self-Refine (Madaan et al., NeurIPS 2023)
   --skip-understand              Skip understand phase
@@ -271,7 +273,9 @@ use_memory: $USE_MEMORY
 started_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ---
 
+<!-- PROMPT -->
 $PROMPT
+<!-- /PROMPT -->
 
 $TEMPLATE
 

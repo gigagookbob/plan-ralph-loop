@@ -117,8 +117,12 @@ if [[ -z "$LAST_OUTPUT" ]]; then
   exit 0
 fi
 
-# Extract the original prompt (everything after closing ---)
-PROMPT_TEXT=$(awk '/^---$/{i++; next} i>=2' "$STATE_FILE")
+# Extract the original prompt (between markers, or full body as fallback)
+PROMPT_TEXT=$(sed -n '/<!-- PROMPT -->/,/<!-- \/PROMPT -->/{ //d; p; }' "$STATE_FILE")
+if [[ -z "$PROMPT_TEXT" ]]; then
+  # Fallback for old-format state files without markers
+  PROMPT_TEXT=$(awk '/^---$/{i++; next} i>=2' "$STATE_FILE")
+fi
 
 # --- 7. Progress indicator ---
 TOTAL_PHASES=$(echo "$PHASES_STR" | tr ',' '\n' | grep -c '.' || true)

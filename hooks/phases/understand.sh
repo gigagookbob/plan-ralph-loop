@@ -1,6 +1,6 @@
 # Phase: UNDERSTAND
-# Validates problem analysis output. Advances to EXPLORE on pass.
-# Injects Reflexion session memory into the explore prompt.
+# Validates problem analysis output. Advances to next phase on pass.
+# Injects Reflexion session memory when transitioning to explore.
 # Sourced by stop-hook.sh — do not execute directly.
 # shellcheck disable=SC2154
 
@@ -46,12 +46,13 @@ $PROMPT_TEXT" \
     "Phase: UNDERSTAND | Need 3+ numbered items and 2+ understanding keywords."
 fi
 
-# Understand passed — advance to explore
+# Understand passed — advance to next phase
 advance_phase
+NEXT_PHASE=$(grep '^phase: ' "$STATE_FILE" | sed 's/phase: *//')
 
-# Reflexion: inject session memory if available
+# Reflexion: inject session memory if transitioning to explore
 MEMORY_INJECT=""
-if [[ "$USE_MEMORY" == "true" ]] && [[ -f "$PROJECT_DIR/.claude/plansmith-memory.local.md" ]]; then
+if [[ "$NEXT_PHASE" == "explore" ]] && [[ "$USE_MEMORY" == "true" ]] && [[ -f "$PROJECT_DIR/.claude/plansmith-memory.local.md" ]]; then
   MEMORY_CONTEXT=$(tail -50 "$PROJECT_DIR/.claude/plansmith-memory.local.md")
   if [[ -n "$MEMORY_CONTEXT" ]]; then
     MEMORY_INJECT="
@@ -62,8 +63,10 @@ $MEMORY_CONTEXT
   fi
 fi
 
-block_with \
-  "[plansmith] $PROGRESS Phase: EXPLORE — Now read the codebase.
+case "$NEXT_PHASE" in
+  explore)
+    block_with \
+      "[plansmith] $PROGRESS Phase: EXPLORE — Now read the codebase.
 
 Based on your problem understanding above, read the codebase to find relevant files and patterns.
 Reference your problem definition, success criteria, and constraints as you explore.
@@ -78,4 +81,52 @@ Do NOT include headings like ## Goal, ## Steps, ## Scope, etc.
 
 Original request:
 $PROMPT_TEXT" \
-  "Phase: EXPLORE | Read actual files and report findings. No plan yet."
+      "Phase: EXPLORE | Read actual files and report findings. No plan yet."
+    ;;
+  alternatives)
+    block_with \
+      "[plansmith] $PROGRESS Phase: ALTERNATIVES — Compare approaches before planning.
+
+Based on your analysis, compare 2-3 possible approaches:
+For each approach:
+- Core idea
+- Pros and cons (implementation complexity, maintainability, compatibility with existing code)
+
+At the end, choose one approach and explain why.
+Do NOT write a plan yet — only compare approaches.
+
+Original request:
+$PROMPT_TEXT" \
+      "Phase: ALTERNATIVES | Compare 2-3 approaches. Do NOT write a plan yet."
+    ;;
+  draft)
+    block_with \
+      "[plansmith] $PROGRESS Phase: DRAFT — Now write the plan.
+
+Based on your analysis, write a complete plan with ALL required sections:
+$REQUIRED_SECTIONS
+
+STEP ORDERING (Least-to-Most decomposition):
+- Order steps from simplest/most independent to most complex/most dependent
+- Each step should build on the foundation of previous steps
+- For each step, explicitly state which previous steps it depends on
+- If two steps are independent, note that they can be parallelized
+
+Each step must reference specific files and functions.
+Use English or Korean section headings (both accepted).
+
+Do NOT output <promise>$COMPLETION_PROMISE</promise> yet — there will be a critique phase first.
+
+Original request:
+$PROMPT_TEXT" \
+      "Phase: DRAFT | Write the complete plan with all required sections."
+    ;;
+  *)
+    block_with \
+      "[plansmith] $PROGRESS Proceeding to next phase.
+
+Original request:
+$PROMPT_TEXT" \
+      "Proceeding to next phase."
+    ;;
+esac

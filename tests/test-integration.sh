@@ -223,6 +223,15 @@ test_setup() {
   assert_equals "--phases with double commas: sanitized" \
     "understand,explore,draft" "$phases"
   cleanup_tmpdir
+
+  # Test 9: State file contains prompt markers (B-1)
+  setup_tmpdir
+  cd "$TEST_TMPDIR"
+  CLAUDE_PLUGIN_ROOT="$PROJECT_ROOT" bash "$PROJECT_ROOT/scripts/setup.sh" "Test prompt here" > /dev/null 2>&1
+  local content
+  content=$(cat "$TEST_TMPDIR/.claude/plansmith.local.md")
+  assert_contains "Prompt markers present" "<!-- PROMPT -->" "$content"
+  cleanup_tmpdir
 }
 
 # ============================================================
@@ -275,7 +284,44 @@ test_stop_hook() {
   assert_equals "Missing message: deactivated" "false" "$active"
   cleanup_tmpdir
 
-  # Test 5: Valid explore output advances to ALTERNATIVES
+  # Test 5: Prompt markers: only original prompt is injected (B-1)
+  setup_tmpdir
+  # Create state file with markers — template content should NOT appear in phase prompt
+  cat > "$TEST_TMPDIR/.claude/plansmith.local.md" << 'MARKEREOF'
+---
+active: true
+phase: understand
+phase_index: 0
+max_phases: 10
+phases: "understand,explore,alternatives,draft,critique,revise,critique,revise"
+refine_iterations: 2
+critique_mode: "principles"
+use_memory: false
+completion_promise: "PLAN_OK"
+block_tools: true
+required_sections: "Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
+---
+
+<!-- PROMPT -->
+Design the auth system
+<!-- /PROMPT -->
+
+## Planning Quality Rubric
+Some template content that should be excluded.
+MARKEREOF
+  hook_input=$(jq -n --arg msg "1. The problem is that auth is broken.
+2. Success: all login flows work.
+3. Constraints: backward compat.
+4. Assumptions: stable DB.
+5. Impact: all users." \
+    '{"last_assistant_message": $msg}')
+  output=$(cd "$TEST_TMPDIR" && echo "$hook_input" | \
+    CLAUDE_PLUGIN_ROOT="$PROJECT_ROOT" bash "$PROJECT_ROOT/hooks/stop-hook.sh" 2>/dev/null) || true
+  assert_contains "Prompt markers: original prompt in output" "Design the auth system" "$output"
+  assert_not_contains "Prompt markers: template excluded" "Planning Quality Rubric" "$output"
+  cleanup_tmpdir
+
+  # Test 6: Valid explore output advances to ALTERNATIVES
   setup_tmpdir
   create_state_file "explore" 1
   hook_input=$(jq -n --arg msg "I examined the following files:

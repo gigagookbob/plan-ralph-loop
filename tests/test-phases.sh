@@ -758,6 +758,56 @@ test_skip_phases() {
   fi
 }
 
+# --- Skip flag dynamic transition tests (A-1) ---
+
+# Helper: override PHASES_STR and update state file to match
+override_phases() {
+  local new_phases="$1"
+  export PHASES_STR="$new_phases"
+  local sf="$TEST_TMPDIR/.claude/plansmith.local.md"
+  local tf="${sf}.tmp.$$"
+  sed "s/^phases: .*/phases: \"$new_phases\"/" "$sf" > "$tf" && mv "$tf" "$sf"
+}
+
+test_skip_transitions() {
+  echo -e "\n${BOLD}=== Skip flag dynamic transitions ===${RESET}"
+
+  # Test 1: understand → alternatives (explore skipped)
+  setup_tmpdir
+  setup_env "understand" 0 "1. The problem is that auth is broken.
+2. The success criteria: all flows work.
+3. Constraints: backward compat required.
+4. Assumptions: stable DB schema.
+5. Impact: all users affected."
+  override_phases "understand,alternatives,draft,critique,revise,critique,revise"
+  run_phase "understand.sh" || true
+  assert_blocked "understand → alternatives (explore skipped)" "ALTERNATIVES"
+  cleanup_tmpdir
+
+  # Test 2: understand → draft (explore + alternatives skipped)
+  setup_tmpdir
+  setup_env "understand" 0 "1. The problem is that auth is broken.
+2. The success criteria: all flows work.
+3. Constraints: backward compat required.
+4. Assumptions: stable DB schema.
+5. Impact: all users affected."
+  override_phases "understand,draft,critique,revise,critique,revise"
+  run_phase "understand.sh" || true
+  assert_blocked "understand → draft (explore + alternatives skipped)" "DRAFT"
+  cleanup_tmpdir
+
+  # Test 3: explore → draft (alternatives skipped)
+  setup_tmpdir
+  setup_env "explore" 1 "I examined the following files:
+- src/auth/login.ts handles user authentication
+- src/api/routes.ts defines the API endpoints
+- config/database.yml has the DB configuration"
+  override_phases "understand,explore,draft,critique,revise,critique,revise"
+  run_phase "explore.sh" || true
+  assert_blocked "explore → draft (alternatives skipped)" "DRAFT"
+  cleanup_tmpdir
+}
+
 # --- Run all tests ---
 
 echo -e "${BOLD}Plansmith Phase Unit Tests${RESET}"
@@ -792,6 +842,7 @@ test_perspective_rotation
 test_state_advancement
 test_dispatcher
 test_skip_phases
+test_skip_transitions
 
 echo -e "\n${BOLD}=== Results ===${RESET}"
 echo -e "  ${GREEN}Passed: $PASS_COUNT${RESET}"
