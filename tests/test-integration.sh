@@ -59,7 +59,10 @@ completion_promise: "PLAN_OK"
 block_tools: true
 required_sections: "Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
 ---
+
+<!-- PROMPT -->
 Build a new feature for X.
+<!-- /PROMPT -->
 STATEEOF
 }
 
@@ -474,7 +477,41 @@ Fix auth.
   assert_file_not_exists "Memory disabled: no memory file" "$TEST_TMPDIR/.claude/plansmith-memory.local.md"
   cleanup_tmpdir
 
-  # Test 5: Memory cap at 100 lines enforced
+  # Test 5: Memory task field extracts actual prompt (not comment marker)
+  setup_tmpdir
+  create_state_file "revise" 7
+  add_critique_to_state
+  bash "$PROJECT_ROOT/scripts/save.sh" "$TEST_TMPDIR" "Final plan." "completed" 2>/dev/null
+  memory_content=$(cat "$TEST_TMPDIR/.claude/plansmith-memory.local.md")
+  assert_contains "Memory task is actual prompt" "Build a new feature for X" "$memory_content"
+  assert_not_contains "Memory task is not comment marker" "<!-- PROMPT -->" "$memory_content"
+  cleanup_tmpdir
+
+  # Test 6: Memory extraction fallback for old-format state files
+  setup_tmpdir
+  cat > "$TEST_TMPDIR/.claude/plansmith.local.md" << 'OLDEOF'
+---
+active: true
+phase: revise
+phase_index: 7
+max_phases: 10
+phases: "understand,explore,alternatives,draft,critique,revise,critique,revise"
+refine_iterations: 2
+critique_mode: "principles"
+use_memory: true
+completion_promise: "PLAN_OK"
+block_tools: true
+required_sections: "Goal,Scope,Non-Scope,Steps,Verification,Risks,Open Questions"
+---
+Old format prompt without markers.
+OLDEOF
+  add_critique_to_state
+  bash "$PROJECT_ROOT/scripts/save.sh" "$TEST_TMPDIR" "Final plan." "completed" 2>/dev/null
+  memory_content=$(cat "$TEST_TMPDIR/.claude/plansmith-memory.local.md")
+  assert_contains "Old-format fallback: prompt extracted" "Old format prompt" "$memory_content"
+  cleanup_tmpdir
+
+  # Test 7: Memory cap at 100 lines enforced
   setup_tmpdir
   create_state_file "revise" 7
   add_critique_to_state
@@ -519,7 +556,7 @@ test_cancel() {
   assert_contains "No state file: 'No active'" "No active" "$output"
   cleanup_tmpdir
 
-  # Test 3: Already inactive still reports phase
+  # Test 3: Already inactive shows "No active" message (not "cancelled")
   setup_tmpdir
   create_state_file "draft" 3
   # Deactivate manually
@@ -527,7 +564,15 @@ test_cancel() {
   sed 's/^active: true/active: false/' "$TEST_TMPDIR/.claude/plansmith.local.md" > "$tmp_file"
   mv "$tmp_file" "$TEST_TMPDIR/.claude/plansmith.local.md"
   output=$(cd "$TEST_TMPDIR" && bash "$PROJECT_ROOT/scripts/cancel.sh" 2>/dev/null)
-  assert_contains "Already inactive: reports phase" "phase:" "$output"
+  assert_contains "Already inactive: shows 'No active'" "No active" "$output"
+  assert_not_contains "Already inactive: not 'cancelled'" "cancelled" "$output"
+  cleanup_tmpdir
+
+  # Test 4: Active cancellation shows "cancelled" message
+  setup_tmpdir
+  create_state_file "draft" 3
+  output=$(cd "$TEST_TMPDIR" && bash "$PROJECT_ROOT/scripts/cancel.sh" 2>/dev/null)
+  assert_contains "Active cancel: shows 'cancelled'" "cancelled" "$output"
   cleanup_tmpdir
 }
 
