@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Plansmith Stop Hook
-# Prevents session exit when a plansmith is active.
-# Implements a phase machine: understand → explore → alternatives → draft → critique → revise → iterate
+# Blocks the Stop event and injects the next phase prompt while plansmith is active.
+# Phase machine: understand → explore → alternatives → draft → (critique → revise) × N
 # Each phase has distinct validation and prompts.
 
 # Prevent bash.exe.stackdump on MSYS2/Git Bash (Windows)

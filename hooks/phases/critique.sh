@@ -82,10 +82,14 @@ echo "<!-- /CRITIQUE_ROUND_${CRITIQUE_NUM} -->" >> "$STATE_FILE"
 # Critique passed — advance to revise
 advance_phase
 
-# Self-Refine: check if this revise is followed by another critique round
+# Self-Refine lookahead: determine if the upcoming revise is followed by another critique.
+# advance_phase (line 83) updated the STATE FILE to next phase/index, but shell var
+# PHASE_INDEX still holds the pre-advance value. Therefore:
+#   PHASE_INDEX+1 = revise (just advanced to)
+#   PHASE_INDEX+2 = phase after revise (critique if another cycle, or end-of-list)
+# Note: revise.sh uses a different pattern — it checks BEFORE calling advance_phase,
+# so its lookahead uses PHASE_INDEX+1 (not +2). Both approaches are correct.
 IFS=',' read -ra NEXT_CHECK <<< "$PHASES_STR"
-# advance_phase increments in the state file but PHASE_INDEX shell var is still the old value
-# So the revise phase is at PHASE_INDEX+1 (just advanced), and the phase AFTER revise is PHASE_INDEX+2
 AFTER_REVISE_IDX=$((PHASE_INDEX + 2))
 AFTER_REVISE_NAME=""
 if [[ $AFTER_REVISE_IDX -lt ${#NEXT_CHECK[@]} ]]; then
